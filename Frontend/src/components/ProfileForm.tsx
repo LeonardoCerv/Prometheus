@@ -5,11 +5,13 @@ import { ProfileData } from "@/app/be-found/page";
 interface ProfileFormProps {
   profileData: ProfileData;
   setProfileData: (data: ProfileData) => void;
+  onSaveProfile?: () => void;
 }
 
 export default function ProfileForm({
   profileData,
   setProfileData,
+  onSaveProfile,
 }: ProfileFormProps) {
   const handlePersonalInfoChange = (field: string, value: string) => {
     setProfileData({
@@ -497,7 +499,9 @@ export default function ProfileForm({
         <div className="flex justify-end pt-4">
           <button
             type="button"
-            className="bg-primary hover:bg-primary/90 text-foreground px-8 py-3 font-semibold text-lg transition-all shadow-sm hover:shadow-md rounded"
+            onClick={onSaveProfile}
+            disabled={!onSaveProfile}
+            className="bg-primary hover:bg-primary/90 text-foreground px-8 py-3 font-semibold text-lg transition-all shadow-sm hover:shadow-md rounded disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Save Profile
           </button>

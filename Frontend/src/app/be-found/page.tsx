@@ -100,7 +100,6 @@ export default function BeFoundPage() {
   return (
     <main className="flex w-full flex-1 flex-col min-h-screen bg-background px-4 md:px-8 py-8">
       <div className="max-w-6xl mx-auto w-full">
-        {/* Logo and Log Out */}
         <div className="flex justify-between items-center mb-8">
           <a href="/" className="flex items-center gap-4">
             <img src="/prometheus.svg" alt="Logo" width="64" height="64" />

@@ -24,9 +24,11 @@ export default function Landing() {
           <div className="flex flex-col md:flex-row justify-center md:justify-evenly w-full">
             {/* Employers/Recruiters Column */}
             <div className="flex flex-col gap-4 md:max-w-sm">
-              <button className="bg-transparent text-foreground relative inline-flex items-center border-2 border-primary justify-center text-primary  text-3xl tracking-base ring-offset-background transition-colors focus-visible:outline-none disabled:opacity-50 shadow-md hover:brightness-95 px-4 py-2 font-fjalla">
-                Find
-              </button>
+              <a href="/find/sign-up">
+                <button className="bg-transparent text-foreground relative inline-flex items-center border-2 border-primary justify-center text-primary  text-3xl tracking-base ring-offset-background transition-colors focus-visible:outline-none disabled:opacity-50 shadow-md hover:brightness-95 px-4 py-2 font-fjalla">
+                  Find
+                </button>
+              </a>
               <div>
                 <p className="text-lg font-medium leading-6 tracking-base pr-6 text-muted pb-4">
                   <span className="text-primary">Find the perfect fit for a role. </span> 
