@@ -86,9 +86,8 @@ export default function Sidebar() {
   };
 
   const selectConversation = (conversation: Conversation) => {
-    // For now, just navigate to find page
-    // In a real app, this would load the specific conversation
-    router.push("/find");
+    // Navigate to the specific chat
+    router.push(`/chat/${conversation.id}`);
   };
 
   const deleteConversation = (conversationId: string) => {
@@ -148,16 +147,17 @@ export default function Sidebar() {
         <a className="pl-2" href="/">
           <div className="flex w-full items-center">
             <img src="/prometheus.svg" alt="Logo" width="64" height="64" />
+            <span className="ml-1 text-primary text-3xl font-averia">Prometheus</span>
           </div>
         </a>
 
         {/* New Chat Button */}
-        <div className="px-2 pt-4">
+        <div className="px-2 pt-4 mr-6 ">
           <button
             onClick={createNewConversation}
             className="w-full bg-primary text-foreground relative inline-flex items-center justify-center text-sm font-semibold tracking-base ring-offset-background transition-colors focus-visible:outline-none disabled:opacity-50 shadow-sm hover:brightness-95 h-[36px] px-3 py-2 rounded-md"
           >
-            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4 mr-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
             New Search
