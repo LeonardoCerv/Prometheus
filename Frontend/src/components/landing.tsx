@@ -37,9 +37,11 @@ export default function Landing() {
 
             {/* Applicants/Professionals Column */}
             <div className="flex flex-col gap-4 md:max-w-sm">
-              <button className="bg-transparent text-foreground relative inline-flex items-center border-2 border-primary justify-center text-primary  text-3xl tracking-base ring-offset-background transition-colors focus-visible:outline-none disabled:opacity-50 shadow-md hover:brightness-95 px-4 py-2 font-fjalla">
-                Be Found
-              </button>
+              <a href="/register">
+                <button className="bg-transparent text-foreground relative inline-flex items-center border-2 border-primary justify-center text-primary  text-3xl tracking-base ring-offset-background transition-colors focus-visible:outline-none disabled:opacity-50 shadow-md hover:brightness-95 px-4 py-2 font-fjalla w-full">
+                  Be Found
+                </button>
+              </a>
               <div>
                 <p className="text-lg font-medium leading-6 tracking-base pr-6 text-muted pb-4">
                   <span className="text-primary">Be found without applying. </span>
