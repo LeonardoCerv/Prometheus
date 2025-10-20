@@ -4,8 +4,19 @@ from typing import List, Dict, Any, Optional
 from google.adk.agents import Agent
 import os
 import json
+from .progressive_filter import ProgressiveFilter
 
 # ==================== CUSTOM TOOLS FOR PROMETHEUS RECRUITMENT AGENT ====================
+
+# Global progressive filter instance for maintaining conversation state
+_progressive_filter = None
+
+def get_progressive_filter() -> ProgressiveFilter:
+    """Get or create the progressive filter instance"""
+    global _progressive_filter
+    if _progressive_filter is None:
+        _progressive_filter = ProgressiveFilter()
+    return _progressive_filter
 
 # Load mock candidate data
 def _load_mock_candidates() -> List[Dict[str, Any]]:
@@ -18,6 +29,70 @@ def _load_mock_candidates() -> List[Dict[str, Any]]:
         print(f"Warning: Could not load mock data: {e}")
         return []
 
+def progressive_search(
+    query: str,
+    reset_conversation: bool = False
+) -> dict:
+    """Progressive candidate search that refines results through multi-turn conversation.
+    
+    This tool enables conversational filtering where each query builds on previous ones,
+    progressively narrowing down candidates. Perfect for iterative refinement:
+    - First query: "I need a web developer" (broad search)
+    - Second query: "I need a React developer" (narrows to React)
+    - Third query: "with Next.js experience" (further refines)
+    
+    The tool maintains conversation context and shows top matches at each stage,
+    with scores that reflect both direct skill matches and transferable skills.
+    
+    Args:
+        query (str): Natural language search query. Can be broad ("web developer") 
+            or specific ("senior React developer with TypeScript"). Each query 
+            refines the previous results.
+            Examples:
+            - "I need a web developer"
+            - "I need a React developer"
+            - "with Next.js and TypeScript"
+            - "senior level only"
+            - "available for freelance"
+        reset_conversation (bool): Set to True to start a fresh search, clearing
+            previous filters. Default: False (continues refinement)
+    
+    Returns:
+        dict: Contains status, current matches, conversation context, and refinement suggestions.
+            Example: {
+                "status": "success",
+                "conversation_turn": 2,
+                "current_query": "I need a React developer",
+                "combined_filters": {
+                    "skills": ["javascript", "react"],
+                    "experience_level": "any",
+                    "availability": "any"
+                },
+                "matches_found": 5,
+                "matches": [{
+                    "candidate_id": "1",
+                    "name": "Maria Garcia",
+                    "score": 95.5,
+                    "matched_skills": ["react", "javascript"],
+                    "transferable_skills": [...],
+                    "reasoning": "Has 2/2 required skills...",
+                    ...
+                }],
+                "refinement_suggestion": "Consider adding specific requirements..."
+            }
+    """
+    progressive_filter = get_progressive_filter()
+    
+    # Reset if requested
+    if reset_conversation:
+        progressive_filter.reset()
+    
+    # Perform progressive filtering
+    result = progressive_filter.filter_candidates(query)
+    
+    return result
+
+
 def search_candidates(
     job_requirements: str,
     skills: List[str],
@@ -29,6 +104,9 @@ def search_candidates(
     This tool performs semantic matching (not keyword-based) to find candidates whose
     skills, experience, and availability align with the job requirements. It analyzes
     transferable skills and context beyond exact keyword matches.
+    
+    DEPRECATED: Consider using progressive_search for multi-turn conversations that
+    allow for iterative refinement of results.
     
     Args:
         job_requirements (str): Natural language description of the job requirements.
@@ -383,7 +461,9 @@ Your capabilities include:
    - Analyze transferable skills and context beyond exact matches
    - Calculate compatibility scores (0-100) with detailed reasoning
    - Only recommend candidates with scores >= 60%
-   - Use the search_candidates tool for natural language queries
+   - **PROGRESSIVE FILTERING**: Use the progressive_search tool for multi-turn conversations
+     that allow recruiters to refine results iteratively (e.g., "web developer" → "React developer" → "with Next.js")
+   - Use the search_candidates tool for single-query searches with specific parameters
    - Use calculate_match_score for detailed compatibility analysis
 
 2. **PROFILE ANALYSIS**
@@ -407,12 +487,20 @@ Your capabilities include:
 
 **TOOL USAGE GUIDELINES:**
 
-- For recruiter queries like "Find me a React developer", use search_candidates
+- **PREFERRED**: For recruiter queries like "Find me a web developer" or conversational refinements,
+  use progressive_search - it maintains context across multiple queries and progressively refines results
+- For single-query searches with explicit parameters, use search_candidates
 - For analyzing candidate data, use analyze_candidate_profile
 - For sending offers to selected candidates, use send_whatsapp_offer
 - For scheduling interviews, use schedule_meeting
 - For processing candidate WhatsApp replies, use process_whatsapp_response
 - For detailed compatibility analysis, use calculate_match_score
+
+**PROGRESSIVE SEARCH WORKFLOW:**
+1. User: "I need a web developer" → Use progressive_search(query="I need a web developer")
+2. User: "Actually, a React developer" → Use progressive_search(query="I need a React developer")
+3. User: "with Next.js experience" → Use progressive_search(query="with Next.js experience")
+Each query refines the previous results, showing best matches at each stage.
 
 **COMMUNICATION STYLE:**
 - Professional but approachable
@@ -426,6 +514,7 @@ Your capabilities include:
 - Focus on reducing time-to-hire from days to minutes
 - Prioritize candidate experience and quick response times""",
     tools=[
+        progressive_search,
         search_candidates,
         analyze_candidate_profile,
         send_whatsapp_offer,

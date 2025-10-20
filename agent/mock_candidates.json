@@ -266,6 +266,389 @@
       "salary_expectation": 100000,
       "location": "Monterrey, Mexico",
       "languages": ["Spanish", "English"]
+    },
+    {
+      "id": "9",
+      "name": "Andrea Morales",
+      "email": "andrea.morales@email.com",
+      "phone": "+525589012345",
+      "skills": ["React", "Next.js", "TypeScript", "GraphQL", "React Native", "Redux", "Tailwind CSS", "Jest"],
+      "experience": [
+        {
+          "title": "Senior Full Stack Developer",
+          "company": "TechHub LATAM",
+          "duration": "2020-2025",
+          "years": 5,
+          "description": "Built full-stack applications with Next.js and GraphQL"
+        },
+        {
+          "title": "React Developer",
+          "company": "Mobile Apps Inc",
+          "duration": "2018-2020",
+          "years": 2,
+          "description": "Developed React Native mobile applications"
+        }
+      ],
+      "education": [
+        {
+          "degree": "Software Engineering",
+          "institution": "ITESM",
+          "year": 2018
+        }
+      ],
+      "experience_level": "senior",
+      "total_years": 7,
+      "availability": "freelance",
+      "hourly_rate": 65,
+      "location": "Guadalajara, Mexico",
+      "languages": ["Spanish", "English"]
+    },
+    {
+      "id": "10",
+      "name": "Fernando Castro",
+      "email": "fernando.castro@email.com",
+      "phone": "+525590123456",
+      "skills": ["JavaScript", "HTML", "CSS", "jQuery", "Bootstrap", "WordPress"],
+      "experience": [
+        {
+          "title": "Web Developer",
+          "company": "Marketing Agency",
+          "duration": "2023-2025",
+          "years": 2,
+          "description": "Built marketing websites with WordPress and jQuery"
+        }
+      ],
+      "education": [
+        {
+          "degree": "Web Development Bootcamp",
+          "institution": "Coding Academy",
+          "year": 2023
+        }
+      ],
+      "experience_level": "junior",
+      "total_years": 2,
+      "availability": "freelance",
+      "hourly_rate": 25,
+      "location": "Puebla, Mexico",
+      "languages": ["Spanish", "English"]
+    },
+    {
+      "id": "11",
+      "name": "Patricia Diaz",
+      "email": "patricia.diaz@email.com",
+      "phone": "+525501234567",
+      "skills": ["React", "TypeScript", "Node.js", "Express", "PostgreSQL", "Docker", "AWS", "Kubernetes"],
+      "experience": [
+        {
+          "title": "DevOps Engineer",
+          "company": "Cloud Solutions",
+          "duration": "2021-2025",
+          "years": 4,
+          "description": "Managed infrastructure and deployment pipelines"
+        },
+        {
+          "title": "Full Stack Developer",
+          "company": "SaaS Startup",
+          "duration": "2019-2021",
+          "years": 2,
+          "description": "Built React applications with Node.js backends"
+        }
+      ],
+      "education": [
+        {
+          "degree": "Computer Engineering",
+          "institution": "IPN",
+          "year": 2019
+        }
+      ],
+      "experience_level": "mid",
+      "total_years": 6,
+      "availability": "contract",
+      "hourly_rate": 55,
+      "location": "Mexico City, Mexico",
+      "languages": ["Spanish", "English"]
+    },
+    {
+      "id": "12",
+      "name": "Miguel Flores",
+      "email": "miguel.flores@email.com",
+      "phone": "+525512345098",
+      "skills": ["React", "Vue.js", "JavaScript", "CSS", "Sass", "Webpack", "Git"],
+      "experience": [
+        {
+          "title": "Frontend Developer",
+          "company": "Design Studio",
+          "duration": "2020-2025",
+          "years": 5,
+          "description": "Created pixel-perfect UIs with React and Vue.js"
+        }
+      ],
+      "education": [
+        {
+          "degree": "Graphic Design & Web Development",
+          "institution": "Universidad Iberoamericana",
+          "year": 2020
+        }
+      ],
+      "experience_level": "mid",
+      "total_years": 5,
+      "availability": "freelance",
+      "hourly_rate": 45,
+      "location": "Mexico City, Mexico",
+      "languages": ["Spanish", "English"]
+    },
+    {
+      "id": "13",
+      "name": "Valentina Ruiz",
+      "email": "valentina.ruiz@email.com",
+      "phone": "+525523450987",
+      "skills": ["Next.js", "React", "TypeScript", "Vercel", "Prisma", "PostgreSQL", "Tailwind CSS", "Stripe"],
+      "experience": [
+        {
+          "title": "Next.js Developer",
+          "company": "E-commerce Startup",
+          "duration": "2022-2025",
+          "years": 3,
+          "description": "Built serverless e-commerce platforms with Next.js 14"
+        },
+        {
+          "title": "Frontend Developer",
+          "company": "Web Agency",
+          "duration": "2021-2022",
+          "years": 1,
+          "description": "Developed React applications"
+        }
+      ],
+      "education": [
+        {
+          "degree": "Computer Science",
+          "institution": "UNAM",
+          "year": 2021
+        }
+      ],
+      "experience_level": "mid",
+      "total_years": 4,
+      "availability": "freelance",
+      "hourly_rate": 50,
+      "location": "Mexico City, Mexico",
+      "languages": ["Spanish", "English"]
+    },
+    {
+      "id": "14",
+      "name": "Javier Mendoza",
+      "email": "javier.mendoza@email.com",
+      "phone": "+525534567098",
+      "skills": ["Python", "Flask", "React", "JavaScript", "MySQL", "Linux", "Git"],
+      "experience": [
+        {
+          "title": "Junior Full Stack Developer",
+          "company": "Software House",
+          "duration": "2023-2025",
+          "years": 2,
+          "description": "Built web applications with Flask and React"
+        }
+      ],
+      "education": [
+        {
+          "degree": "Computer Engineering",
+          "institution": "IPN",
+          "year": 2023
+        }
+      ],
+      "experience_level": "junior",
+      "total_years": 2,
+      "availability": "full-time",
+      "salary_expectation": 45000,
+      "location": "Mexico City, Mexico",
+      "languages": ["Spanish", "English"]
+    },
+    {
+      "id": "15",
+      "name": "Camila Vargas",
+      "email": "camila.vargas@email.com",
+      "phone": "+525545678109",
+      "skills": ["React", "Next.js", "TypeScript", "Node.js", "MongoDB", "Firebase", "React Native", "Expo"],
+      "experience": [
+        {
+          "title": "Mobile Developer",
+          "company": "App Development Studio",
+          "duration": "2021-2025",
+          "years": 4,
+          "description": "Built cross-platform mobile apps with React Native and Expo"
+        },
+        {
+          "title": "Frontend Developer",
+          "company": "Tech Startup",
+          "duration": "2020-2021",
+          "years": 1,
+          "description": "Developed web apps with React and Next.js"
+        }
+      ],
+      "education": [
+        {
+          "degree": "Software Engineering",
+          "institution": "ITESM",
+          "year": 2020
+        }
+      ],
+      "experience_level": "mid",
+      "total_years": 5,
+      "availability": "contract",
+      "hourly_rate": 48,
+      "location": "Monterrey, Mexico",
+      "languages": ["Spanish", "English"]
+    },
+    {
+      "id": "16",
+      "name": "Ricardo Guzman",
+      "email": "ricardo.guzman@email.com",
+      "phone": "+525556789210",
+      "skills": ["Java", "Spring Boot", "React", "PostgreSQL", "Docker", "Kubernetes", "AWS"],
+      "experience": [
+        {
+          "title": "Senior Backend Developer",
+          "company": "Financial Services Corp",
+          "duration": "2017-2025",
+          "years": 8,
+          "description": "Built microservices architecture with Spring Boot"
+        }
+      ],
+      "education": [
+        {
+          "degree": "Computer Science",
+          "institution": "UNAM",
+          "year": 2017
+        }
+      ],
+      "experience_level": "senior",
+      "total_years": 8,
+      "availability": "full-time",
+      "salary_expectation": 110000,
+      "location": "Mexico City, Mexico",
+      "languages": ["Spanish", "English"]
+    },
+    {
+      "id": "17",
+      "name": "Daniela Ortiz",
+      "email": "daniela.ortiz@email.com",
+      "phone": "+525567892101",
+      "skills": ["React", "JavaScript", "HTML", "CSS", "Bootstrap", "Git", "Figma"],
+      "experience": [
+        {
+          "title": "Junior Frontend Developer",
+          "company": "Digital Agency",
+          "duration": "2024-2025",
+          "years": 1,
+          "description": "Built responsive websites with React and Bootstrap"
+        }
+      ],
+      "education": [
+        {
+          "degree": "Web Development",
+          "institution": "Coding Bootcamp MX",
+          "year": 2024
+        }
+      ],
+      "experience_level": "junior",
+      "total_years": 1,
+      "availability": "freelance",
+      "hourly_rate": 20,
+      "location": "Guadalajara, Mexico",
+      "languages": ["Spanish"]
+    },
+    {
+      "id": "18",
+      "name": "Alejandro Reyes",
+      "email": "alejandro.reyes@email.com",
+      "phone": "+525578903212",
+      "skills": ["React", "Next.js", "TypeScript", "GraphQL", "Apollo", "Prisma", "PostgreSQL", "Vercel", "Tailwind CSS"],
+      "experience": [
+        {
+          "title": "Lead Frontend Developer",
+          "company": "SaaS Platform",
+          "duration": "2019-2025",
+          "years": 6,
+          "description": "Led frontend team building Next.js applications with GraphQL"
+        },
+        {
+          "title": "React Developer",
+          "company": "Tech Consulting",
+          "duration": "2017-2019",
+          "years": 2,
+          "description": "Consulted on React projects"
+        }
+      ],
+      "education": [
+        {
+          "degree": "Software Engineering",
+          "institution": "ITESM",
+          "year": 2017
+        }
+      ],
+      "experience_level": "senior",
+      "total_years": 8,
+      "availability": "freelance",
+      "hourly_rate": 75,
+      "location": "Monterrey, Mexico",
+      "languages": ["Spanish", "English"]
+    },
+    {
+      "id": "19",
+      "name": "Lucia Navarro",
+      "email": "lucia.navarro@email.com",
+      "phone": "+525589014323",
+      "skills": ["Vue.js", "JavaScript", "Node.js", "Express", "MongoDB", "Docker"],
+      "experience": [
+        {
+          "title": "Full Stack Developer",
+          "company": "Tech Startup",
+          "duration": "2021-2025",
+          "years": 4,
+          "description": "Built full-stack applications with Vue.js and Node.js"
+        }
+      ],
+      "education": [
+        {
+          "degree": "Computer Science",
+          "institution": "UAM",
+          "year": 2021
+        }
+      ],
+      "experience_level": "mid",
+      "total_years": 4,
+      "availability": "full-time",
+      "salary_expectation": 75000,
+      "location": "Queretaro, Mexico",
+      "languages": ["Spanish", "English"]
+    },
+    {
+      "id": "20",
+      "name": "Gabriel Silva",
+      "email": "gabriel.silva@email.com",
+      "phone": "+525590125434",
+      "skills": ["React", "Next.js", "TypeScript", "Node.js", "NestJS", "PostgreSQL", "Redis", "Docker", "AWS"],
+      "experience": [
+        {
+          "title": "Senior Full Stack Engineer",
+          "company": "Enterprise Tech",
+          "duration": "2018-2025",
+          "years": 7,
+          "description": "Built scalable applications with Next.js and NestJS"
+        }
+      ],
+      "education": [
+        {
+          "degree": "Computer Engineering",
+          "institution": "IPN",
+          "year": 2018
+        }
+      ],
+      "experience_level": "senior",
+      "total_years": 7,
+      "availability": "contract",
+      "hourly_rate": 70,
+      "location": "Mexico City, Mexico",
+      "languages": ["Spanish", "English", "Portuguese"]
     }
   ],
   "sample_queries": [
