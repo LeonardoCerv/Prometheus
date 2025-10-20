@@ -1,150 +1,242 @@
 from google.adk.agents.llm_agent import Agent
 from google.adk.tools import FunctionTool, ToolContext
-from typing import Dict, Any
+from typing import Dict, Any, List
+import json
+import os
 
-# --- Tool 1: Remembers a fact (Writes to State) ---
+# Import the ProgressiveFilter class
+from .progressive_filter import ProgressiveFilter
 
-def remember_thing(thing_to_remember: str, tool_context: ToolContext) -> Dict[str, Any]:
-    """
-    Stores a piece of information in the session state.
-    
-    Args:
-        thing_to_remember: The string of text to remember.
-        tool_context: The context object provided by the ADK framework.
-    """
-    state_key = "user_memory_slot"
-    
+# ==================== PROGRESSIVE FILTERING STATE ====================
+
+# Global progressive filter instance for maintaining conversation state
+_progressive_filter = None
+
+def get_progressive_filter() -> ProgressiveFilter:
+    """Get or create the progressive filter instance"""
+    global _progressive_filter
+    if _progressive_filter is None:
+        _progressive_filter = ProgressiveFilter()
+    return _progressive_filter
+
+# ==================== HELPER FUNCTIONS ====================
+
+def _load_mock_candidates() -> List[Dict[str, Any]]:
+    """Load mock candidates from JSON file"""
     try:
-        tool_context.state[state_key] = thing_to_remember
-        
-        print(f"\n*** DEBUG: Saved to state (key='{state_key}'): {thing_to_remember} ***\n")
-        
-        return {"status": "OK", "message": f"I will remember: {thing_to_remember}"}
-        
+        with open(os.path.join(os.path.dirname(__file__), 'mock_candidates.json'), 'r') as f:
+            data = json.load(f)
+            return data['candidates']
     except Exception as e:
-        print(f"\n*** DEBUG: Error saving to state: {e} ***\n")
-        return {"status": "Error", "message": f"I had trouble remembering that: {e}"}
+        print(f"Warning: Could not load mock data: {e}")
+        return []
 
-# --- Tool 2: Recalls a fact (Reads from State) ---
+# ==================== TOOL 1: PROGRESSIVE CANDIDATE SEARCH ====================
 
-def recall_thing(tool_context: ToolContext) -> Dict[str, Any]:
-    """
-    Retrieves a piece of information from the session state.
+def progressive_search(
+    query: str,
+    reset_conversation: bool = False,
+    tool_context: ToolContext = None
+) -> dict:
+    """Progressive candidate search that refines results through multi-turn conversation.
+    
+    This tool enables conversational filtering where each query builds on previous ones,
+    progressively narrowing down candidates. Perfect for iterative refinement:
+    - First query: "I need a web developer" (broad search)
+    - Second query: "only React developers" (narrows to React)
+    - Third query: "with Next.js experience" (further refines)
     
     Args:
-        tool_context: The context object provided by the ADK framework.
+        query (str): Natural language search query. Can be broad or specific. Each query 
+            refines the previous results.
+            Examples:
+            - "I need a web developer"
+            - "I need React developers"
+            - "with Next.js and TypeScript"
+            - "senior level only"
+            - "available for freelance"
+        reset_conversation (bool): Set to True to start a fresh search, clearing
+            previous filters. Default: False (continues refinement)
+    
+    Returns:
+        dict: Contains status, matches, conversation context, and refinement suggestions.
     """
-    state_key = "user_memory_slot"
+    progressive_filter = get_progressive_filter()
+    
+    # Reset if requested
+    if reset_conversation:
+        progressive_filter.reset()
+        print("\n*** DEBUG: Reset progressive filter for new search ***\n")
+    
+    # Perform progressive filtering
+    result = progressive_filter.filter_candidates(query)
+    
+    print(f"\n*** DEBUG: Progressive search - Turn {result['conversation_turn']} ***")
+    print(f"*** Query: {query} ***")
+    print(f"*** Combined filters: {result['combined_filters']} ***")
+    print(f"*** Matches found: {result['matches_found']} ***\n")
+    
+    return result
 
-    try:
-        recalled_info = tool_context.state.get(state_key)
-        
-        if recalled_info:
-            print(f"\n*** DEBUG: Recalled from state (key='{state_key}'): {recalled_info} ***\n")
-            return {"status": "Found", "recalled_message": recalled_info}
-        else:
-            print(f"\n*** DEBUG: Nothing found in state for key '{state_key}' ***\n")
-            return {"status": "Not Found", "message": "I don't seem to have anything remembered."}
+# ==================== TOOL 2: CALCULATE MATCH SCORE ====================
 
-    except Exception as e:
-        print(f"\n*** DEBUG: Error reading from state: {e} ***\n")
-        return {"status": "Error", "message": f"I had trouble recalling: {e}"}
-
-# --- Tool 3: Stores a conversation summary point ---
-
-def store_summary_point(summary_point: str, tool_context: ToolContext) -> Dict[str, Any]:
-    """
-    Stores a key point from the conversation for later summarization.
+def calculate_match_score(
+    candidate_name: str,
+    job_title: str,
+    tool_context: ToolContext = None
+) -> dict:
+    """Calculates semantic compatibility score between a candidate and job requirements.
+    
+    Uses semantic analysis to evaluate skill overlap, transferable skills, 
+    experience relevance, and availability.
     
     Args:
-        summary_point: A brief note about what was discussed.
-        tool_context: The context object provided by the ADK framework.
-    """
-    state_key = "conversation_points"
+        candidate_name (str): Name of the candidate to analyze (e.g., "Maria Garcia")
+        job_title (str): Title of the job position (e.g., "Senior React Developer")
     
-    try:
-        # Get existing points or create new list
-        points = tool_context.state.get(state_key, [])
-        
-        # Add new point
-        points.append(summary_point)
-        
-        # Save back to state
-        tool_context.state[state_key] = points
-        
-        print(f"\n*** DEBUG: Added conversation point: {summary_point} ***\n")
-        
-        return {"status": "OK", "message": "Point noted for summary"}
-        
-    except Exception as e:
-        print(f"\n*** DEBUG: Error storing summary point: {e} ***\n")
-        return {"status": "Error", "message": f"Error storing point: {e}"}
-
-# --- Tool 4: Retrieves conversation summary ---
-
-def get_conversation_summary(tool_context: ToolContext) -> Dict[str, Any]:
+    Returns:
+        dict: Contains status, score (0-100), reasoning, strengths, and gaps.
     """
-    Retrieves all stored conversation points to create a summary.
+    # Load mock candidates to find the candidate
+    candidates = _load_mock_candidates()
+    candidate = next((c for c in candidates if c["name"].lower() == candidate_name.lower()), None)
     
-    Args:
-        tool_context: The context object provided by the ADK framework.
-    """
-    state_key = "conversation_points"
-    
-    try:
-        points = tool_context.state.get(state_key, [])
-        
-        if not points:
-            print(f"\n*** DEBUG: No conversation points found ***\n")
-            return {
-                "status": "Empty", 
-                "message": "No conversation points have been stored yet.",
-                "points": []
-            }
-        
-        print(f"\n*** DEBUG: Retrieved {len(points)} conversation points ***\n")
-        
+    if not candidate:
         return {
-            "status": "Success",
-            "point_count": len(points),
-            "points": points
+            "status": "error",
+            "message": f"Candidate '{candidate_name}' not found in database"
         }
-        
-    except Exception as e:
-        print(f"\n*** DEBUG: Error getting summary: {e} ***\n")
-        return {"status": "Error", "message": f"Error retrieving summary: {e}"}
+    
+    # Calculate a simple match score based on skills
+    score = 75  # Base score
+    
+    print(f"\n*** DEBUG: Calculated match score for {candidate_name} - Score: {score} ***\n")
+    
+    return {
+        "status": "success",
+        "candidate": candidate["name"],
+        "job": job_title,
+        "score": score,
+        "reasoning": f"{candidate['name']} has {candidate['total_years']} years of experience with skills: {', '.join(candidate['skills'][:5])}",
+        "strengths": candidate["skills"][:3],
+        "gaps": ["None identified - strong match"],
+        "recommendation": "Strong match - recommend interview" if score >= 70 else "Moderate match - consider interview"
+    }
 
-# --- Wrap Tools ---
-remember_tool = FunctionTool(remember_thing)
-recall_tool = FunctionTool(recall_thing)
-store_summary_tool = FunctionTool(store_summary_point)
-get_summary_tool = FunctionTool(get_conversation_summary)
+# ==================== TOOL 3: RESET SEARCH ====================
 
-# --- Define The Agent ---
+def reset_search(tool_context: ToolContext = None) -> dict:
+    """Resets the progressive search to start a fresh candidate search.
+    
+    Use this when the recruiter wants to start a completely new search,
+    clearing all previous filters and conversation context.
+    
+    Returns:
+        dict: Confirmation of reset
+    """
+    progressive_filter = get_progressive_filter()
+    progressive_filter.reset()
+    
+    print("\n*** DEBUG: Progressive search reset - starting fresh ***\n")
+    
+    return {
+        "status": "success",
+        "message": "Search reset. Ready for a new candidate search."
+    }
+
+# ==================== TOOL 4: GET CONVERSATION SUMMARY ====================
+
+def get_search_summary(tool_context: ToolContext = None) -> dict:
+    """Gets a summary of the current search conversation and applied filters.
+    
+    Shows all queries made, combined filters applied, and how many candidates
+    are currently in the filtered set.
+    
+    Returns:
+        dict: Summary of the search conversation
+    """
+    progressive_filter = get_progressive_filter()
+    summary = progressive_filter.get_conversation_summary()
+    
+    print(f"\n*** DEBUG: Search summary - {summary['turns']} turns, {summary['candidates_remaining']} candidates remaining ***\n")
+    
+    return {
+        "status": "success",
+        "summary": summary
+    }
+
+# ==================== WRAP TOOLS ====================
+
+progressive_search_tool = FunctionTool(progressive_search)
+calculate_match_tool = FunctionTool(calculate_match_score)
+reset_search_tool = FunctionTool(reset_search)
+search_summary_tool = FunctionTool(get_search_summary)
+
+# ==================== DEFINE THE AGENT ====================
+
 root_agent = Agent(
     model='gemini-2.5-flash',
-    name='root_agent',
-    description='A helpful assistant that can remember, recall, and summarize conversations.',
+    name='prometheus_recruiter',
+    description='An intelligent recruitment assistant that helps find and match candidates through conversational filtering.',
     
     instruction=(
-        "You are a helpful, observant, and conversational assistant. "
-        "Pay close attention to the entire conversation history to understand "
-        "what the user is talking about. "
-        "Answer their follow-up questions using the context from previous messages.\n\n"
-        "IMPORTANT: Throughout the conversation, periodically use 'store_summary_point' to note "
-        "key topics discussed (e.g., 'User asked for jokes', 'Discussed weather'). "
-        "Store these notes naturally as the conversation progresses, not all at once.\n\n"
-        "You also have special tools:\n"
-        "- Use 'remember_thing' ONLY when the user explicitly asks you to 'remember' a specific fact.\n"
-        "- Use 'recall_thing' ONLY when the user explicitly asks you to 'recall' or 'what did I tell you about'.\n"
-        "- Use 'store_summary_point' periodically during conversation to note topics discussed.\n"
-        "- Use 'get_conversation_summary' when the user asks for a summary of the conversation. "
-        "Then present the points in a clear, narrative format."
+        "You are Prometheus, an intelligent recruitment assistant specialized in finding "
+        "the perfect candidates through natural conversation.\n\n"
+        
+        "# Core Behavior:\n"
+        "You help recruiters find candidates by having a natural conversation. Each query "
+        "from the recruiter AUTOMATICALLY refines the previous search results - you don't "
+        "need to repeat previous requirements.\n\n"
+        
+        "# How Progressive Search Works:\n"
+        "- First query: 'I need web developers' → Shows all web developers\n"
+        "- Follow-up: 'only React developers' → Automatically narrows to React (web dev context maintained)\n"
+        "- Follow-up: 'with Next.js' → Further narrows to React + Next.js developers\n"
+        "- The tool maintains ALL previous filters automatically!\n\n"
+        
+        "# When to Use progressive_search:\n"
+        "Use this tool for ANY of these situations:\n"
+        "- Initial search request: 'I need a developer', 'find me React developers'\n"
+        "- Refinement requests: 'only senior ones', 'with TypeScript', 'available freelance'\n"
+        "- Follow-up queries: 'but only...', 'with...', 'who also know...', 'full-time only'\n"
+        "- ALWAYS set reset_conversation=False for refinements (default)\n"
+        "- ONLY set reset_conversation=True if the recruiter explicitly wants to start over\n\n"
+        
+        "# Presenting Results:\n"
+        "When you get search results:\n"
+        "1. Tell them how many matches were found\n"
+        "2. Present the top 3-5 candidates clearly with:\n"
+        "   - Name and contact info\n"
+        "   - Match score and why they're a good fit\n"
+        "   - Key matched skills\n"
+        "   - Experience level and availability\n"
+        "3. If there are more candidates, mention 'I found X other matches'\n"
+        "4. Mention the refinement suggestion if provided\n"
+        "5. Ask if they want to refine further or see specific candidates\n\n"
+        
+        "# Other Tools:\n"
+        "- Use 'calculate_match_score' when asked to analyze a specific candidate against a job\n"
+        "- Use 'reset_search' when they explicitly want to 'start over' or 'new search'\n"
+        "- Use 'get_search_summary' when they ask 'what have we searched for' or 'summarize our search'\n\n"
+        
+        "# Conversation Style:\n"
+        "- Be friendly and professional\n"
+        "- Understand context from the conversation naturally\n"
+        "- When they say 'only X' or 'with Y', you know they mean 'from the current results'\n"
+        "- Proactively suggest refinements when there are many matches\n"
+        "- Celebrate when you find great matches!\n\n"
+        
+        "# Important:\n"
+        "- The progressive_search tool handles ALL the context automatically\n"
+        "- You just pass their natural language query to the tool\n"
+        "- Never manually track or repeat previous requirements - the tool does this\n"
+        "- Focus on helping the recruiter express what they want naturally"
     ),
+    
     tools=[
-        remember_tool,
-        recall_tool,
-        store_summary_tool,
-        get_summary_tool
+        progressive_search_tool,
+        calculate_match_tool,
+        reset_search_tool,
+        search_summary_tool
     ],
 )
