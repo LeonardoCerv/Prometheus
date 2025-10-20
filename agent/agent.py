@@ -93,114 +93,6 @@ def progressive_search(
     return result
 
 
-def search_candidates(
-    job_requirements: str,
-    skills: List[str],
-    experience_level: str = "any",
-    availability: str = "any"
-) -> dict:
-    """Searches for candidates matching job requirements using semantic AI matching.
-    
-    This tool performs semantic matching (not keyword-based) to find candidates whose
-    skills, experience, and availability align with the job requirements. It analyzes
-    transferable skills and context beyond exact keyword matches.
-    
-    DEPRECATED: Consider using progressive_search for multi-turn conversations that
-    allow for iterative refinement of results.
-    
-    Args:
-        job_requirements (str): Natural language description of the job requirements.
-            Example: "Senior React developer with Next.js experience for 3-month project"
-        skills (List[str]): List of required technical skills.
-            Example: ["React", "Next.js", "TypeScript"]
-        experience_level (str): Required experience level. Options: "junior", "mid", 
-            "senior", "any". Default: "any"
-        availability (str): Required availability type. Options: "full-time", "part-time",
-            "freelance", "contract", "any". Default: "any"
-    
-    Returns:
-        dict: Contains status and candidate matches with scores (0-100), reasoning,
-            strengths, and gaps. Only returns matches with score >= 60.
-            Example: {
-                "status": "success",
-                "matches": [{
-                    "candidate_id": "123",
-                    "name": "John Doe",
-                    "score": 85,
-                    "reasoning": "Strong React background...",
-                    "strengths": ["React", "Next.js"],
-                    "gaps": ["Limited TypeScript"]
-                }]
-            }
-    """
-    # Load mock candidates
-    candidates = _load_mock_candidates()
-    
-    # Filter candidates based on criteria
-    matches = []
-    for candidate in candidates:
-        # Check experience level
-        if experience_level != "any" and candidate["experience_level"] != experience_level:
-            continue
-            
-        # Check availability
-        if availability != "any" and candidate["availability"] != availability:
-            continue
-            
-        # Calculate skill match score
-        candidate_skills = set([s.lower() for s in candidate["skills"]])
-        required_skills = set([s.lower() for s in skills])
-        
-        # Direct skill matches
-        direct_matches = candidate_skills & required_skills
-        skill_match_score = (len(direct_matches) / len(required_skills) * 100) if required_skills else 0
-        
-        # Check for transferable skills (Vue.js -> React, etc.)
-        transferable = 0
-        if "react" in required_skills and "vue.js" in candidate_skills:
-            transferable += 20
-        if "next.js" in required_skills and "react" in candidate_skills:
-            transferable += 15
-        
-        # Calculate total score
-        total_score = min(100, skill_match_score + transferable)
-        
-        # Only include matches >= 60%
-        if total_score >= 60:
-            matches.append({
-                "candidate_id": candidate["id"],
-                "name": candidate["name"],
-                "email": candidate["email"],
-                "phone": candidate["phone"],
-                "score": round(total_score, 1),
-                "skills": candidate["skills"],
-                "experience_years": candidate["total_years"],
-                "experience_level": candidate["experience_level"],
-                "availability": candidate["availability"],
-                "location": candidate["location"],
-                "matched_skills": list(direct_matches),
-                "reasoning": f"Candidate has {len(direct_matches)}/{len(required_skills)} required skills. {candidate['total_years']} years of experience.",
-                "strengths": list(direct_matches)[:3],
-                "gaps": list(required_skills - direct_matches)[:3] if required_skills - direct_matches else ["None"]
-            })
-    
-    # Sort by score descending
-    matches.sort(key=lambda x: x["score"], reverse=True)
-    
-    return {
-        "status": "success",
-        "query": {
-            "requirements": job_requirements,
-            "skills": skills,
-            "level": experience_level,
-            "availability": availability
-        },
-        "total_candidates_searched": len(candidates),
-        "matches_found": len(matches),
-        "matches": matches[:5]  # Return top 5 matches
-    }
-
-
 def analyze_candidate_profile(cv_text: str) -> dict:
     """Analyzes candidate profile data and extracts structured information using Gemini Pro.
     
@@ -489,7 +381,6 @@ Your capabilities include:
 
 - **PREFERRED**: For recruiter queries like "Find me a web developer" or conversational refinements,
   use progressive_search - it maintains context across multiple queries and progressively refines results
-- For single-query searches with explicit parameters, use search_candidates
 - For analyzing candidate data, use analyze_candidate_profile
 - For sending offers to selected candidates, use send_whatsapp_offer
 - For scheduling interviews, use schedule_meeting
@@ -515,7 +406,6 @@ Each query refines the previous results, showing best matches at each stage.
 - Prioritize candidate experience and quick response times""",
     tools=[
         progressive_search,
-        search_candidates,
         analyze_candidate_profile,
         send_whatsapp_offer,
         schedule_meeting,
