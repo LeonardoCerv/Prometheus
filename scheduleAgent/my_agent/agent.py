@@ -1,5 +1,6 @@
 import datetime
 import os
+from typing import Optional
 from google.oauth2.credentials import Credentials
 from google.oauth2 import service_account
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -10,8 +11,46 @@ from dotenv import load_dotenv
 # Cargar variables de entorno
 load_dotenv()
 
-# Scopes necesarios para Google Calendar
-SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
+# Scopes necesarios para Google Calendar (read and write)
+SCOPES = ["https://www.googleapis.com/auth/calendar"]
+
+
+def get_credentials():
+    """
+    Obtiene las credenciales de Google OAuth.
+    
+    Returns:
+        Credentials: Credenciales de Google OAuth
+    """
+    creds = None
+    current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    token_file = os.path.join(current_dir, "token.json")
+    credentials_file = os.path.join(current_dir, "credentials.json")
+    
+    # Intenta cargar el token existente
+    if os.path.exists(token_file):
+        print(f"📄 Cargando token desde: {token_file}")
+        creds = Credentials.from_authorized_user_file(token_file, SCOPES)
+    
+    # Si no hay credenciales válidas disponibles, solicita al usuario que inicie sesión
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            print("🔄 Refrescando token expirado...")
+            creds.refresh(Request())
+        else:
+            print("🔐 Iniciando flujo de autenticación OAuth...")
+            if not os.path.exists(credentials_file):
+                raise Exception(f"No se encontró el archivo de credenciales: {credentials_file}")
+            
+            flow = InstalledAppFlow.from_client_secrets_file(credentials_file, SCOPES)
+            creds = flow.run_local_server(port=0)
+        
+        # Guarda las credenciales para la próxima ejecución
+        print(f"💾 Guardando token en: {token_file}")
+        with open(token_file, 'w') as token:
+            token.write(creds.to_json())
+    
+    return creds
 
 
 def check_calendar_availability():
@@ -21,39 +60,8 @@ def check_calendar_availability():
     Returns:
         list: Lista de eventos próximos del calendario
     """
-    creds = None
-    
-    # Obtener la ruta base del proyecto
-    current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    credentials_filename = os.getenv("GOOGLE_CREDENTIALS_FILE", "hack-475720-a80832b916e2.json")
-    credentials_file = os.path.join(current_dir, credentials_filename)
-    
-    print(f"Buscando credenciales en: {credentials_file}")
-    
     try:
-        # Intenta usar credenciales de cuenta de servicio si existe el archivo
-        if os.path.exists(credentials_file):
-            print(f"✅ Archivo de credenciales encontrado: {credentials_file}")
-            creds = service_account.Credentials.from_service_account_file(
-                credentials_file, scopes=SCOPES
-            )
-            print("✅ Credenciales de cuenta de servicio cargadas correctamente")
-        # Si no, intenta usar el flujo OAuth con token.json
-        elif os.path.exists(os.path.join(current_dir, "token.json")):
-            print("Usando token.json")
-            creds = Credentials.from_authorized_user_file(
-                os.path.join(current_dir, "token.json"), SCOPES
-            )
-        
-        # Verificar si se cargaron las credenciales
-        if not creds:
-            raise Exception(f"No se pudieron cargar las credenciales desde: {credentials_file}")
-        
-        # Para cuentas de servicio, no necesitamos refrescar
-        # Solo verificamos si hay refresh_token para OAuth
-        if hasattr(creds, 'expired') and creds.expired and hasattr(creds, 'refresh_token') and creds.refresh_token:
-            print("Refrescando credenciales expiradas...")
-            creds.refresh(Request())
+        creds = get_credentials()
 
         # Construir el servicio de Calendar API
         print("🔄 Construyendo servicio de Google Calendar...")
@@ -93,7 +101,7 @@ def check_calendar_availability():
         raise error
 
 
-def schedule_meeting(summary: str, start_time: str, end_time: str, attendees: list = None) -> dict:
+def schedule_meeting(summary: str, start_time: str, end_time: str, attendees: list[str] = []) -> dict:
     """
     Programa una nueva reunión en el calendario de Google.
 
@@ -101,32 +109,13 @@ def schedule_meeting(summary: str, start_time: str, end_time: str, attendees: li
         summary (str): Título del evento.
         start_time (str): Hora de inicio del evento en formato ISO 8601 (ej. "2023-10-27T09:00:00-07:00").
         end_time (str): Hora de finalización del evento en formato ISO 8601.
-        attendees (list): Lista de correos electrónicos de los asistentes.
+        attendees (list[str]): Lista de correos electrónicos de los asistentes.
 
     Returns:
         dict: Información del evento creado o mensaje de error.
     """
-    creds = None
-    current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    credentials_filename = os.getenv("GOOGLE_CREDENTIALS_FILE", "hack-475720-a80832b916e2.json")
-    credentials_file = os.path.join(current_dir, credentials_filename)
-
     try:
-        if os.path.exists(credentials_file):
-            creds = service_account.Credentials.from_service_account_file(
-                credentials_file, scopes=SCOPES
-            )
-        elif os.path.exists(os.path.join(current_dir, "token.json")):
-            creds = Credentials.from_authorized_user_file(
-                os.path.join(current_dir, "token.json"), SCOPES
-            )
-
-        if not creds:
-            raise Exception(f"No se pudieron cargar las credenciales desde: {credentials_file}")
-
-        if hasattr(creds, 'expired') and creds.expired and hasattr(creds, 'refresh_token') and creds.refresh_token:
-            creds.refresh(Request())
-
+        creds = get_credentials()
         service = build("calendar", "v3", credentials=creds)
 
         event = {
@@ -164,10 +153,18 @@ def schedule_meeting(summary: str, start_time: str, end_time: str, attendees: li
 from google.adk.agents.llm_agent import Agent
 
 root_agent = Agent(
-    model='gemini-2.5-flash',
+    model='gemini-2.0-flash-exp',  # Changed to a more stable model
     name='calendar_agent',
     description='A helpful assistant for calendar availability and scheduling.',
-    instruction='Answer user questions about calendar availability and scheduling to the best of your knowledge. Use the available tools to fetch real-time information.',
+    instruction="""You are a calendar scheduling assistant. When scheduling meetings:
+1. Always confirm all details: title, date, time, and attendees
+2. For dates and times, convert them to ISO 8601 format: YYYY-MM-DDTHH:MM:SS-07:00
+3. Current timezone is America/Los_Angeles (PST/PDT)
+4. When calling schedule_meeting, use proper ISO format for start_time and end_time
+5. Example: For October 22, 2025 at 9:00 AM, use "2025-10-22T09:00:00-07:00"
+6. Always provide helpful confirmation messages after scheduling
+
+Answer user questions about calendar availability and scheduling to the best of your knowledge. Use the available tools to fetch real-time information.""",
     tools=[check_calendar_availability, schedule_meeting],
 )
 
