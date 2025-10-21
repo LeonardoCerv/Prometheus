@@ -1,0 +1,231 @@
+{
+  "info": {
+    "name": "Prometheus Recruitment API",
+    "description": "Collection of API endpoints for the Prometheus Recruitment System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "health"]
+        },
+        "description": "Check if the API is running and healthy"
+      }
+    },
+    {
+      "name": "API Info",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/",
+          "host": ["{{baseUrl}}"],
+          "path": [""]
+        },
+        "description": "Get API information and available endpoints"
+      }
+    },
+    {
+      "name": "Search Candidates - Initial",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"I need a React developer\",\n  \"reset_conversation\": false\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/search",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "search"]
+        },
+        "description": "Initial candidate search with natural language query"
+      }
+    },
+    {
+      "name": "Search Candidates - Refine (Senior)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"only senior level\",\n  \"reset_conversation\": false\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/search",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "search"]
+        },
+        "description": "Refine previous search to senior level only"
+      }
+    },
+    {
+      "name": "Search Candidates - Refine (Next.js)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"with Next.js experience\",\n  \"reset_conversation\": false\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/search",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "search"]
+        },
+        "description": "Further refine to include Next.js requirement"
+      }
+    },
+    {
+      "name": "Search Candidates - Freelance",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"available for freelance\",\n  \"reset_conversation\": false\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/search",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "search"]
+        },
+        "description": "Filter by freelance availability"
+      }
+    },
+    {
+      "name": "Search Candidates - Reset & New Search",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"I need Python developers\",\n  \"reset_conversation\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/search",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "search"]
+        },
+        "description": "Reset conversation and start a new search"
+      }
+    },
+    {
+      "name": "Calculate Match Score",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"candidate_name\": \"Maria Garcia\",\n  \"job_title\": \"Senior React Developer\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/match-score",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "match-score"]
+        },
+        "description": "Calculate compatibility score between a candidate and job position"
+      }
+    },
+    {
+      "name": "Generate Job Description",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/job-description",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "job-description"]
+        },
+        "description": "Generate a job description based on search conversation"
+      }
+    },
+    {
+      "name": "Get Conversation State",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/conversation-state",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "conversation-state"]
+        },
+        "description": "Get current conversation state and history"
+      }
+    },
+    {
+      "name": "Reset Search",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/reset",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "reset"]
+        },
+        "description": "Reset the search conversation to start fresh"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    }
+  ]
+}
