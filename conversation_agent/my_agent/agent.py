@@ -3,9 +3,49 @@ from google.adk.tools import FunctionTool, ToolContext
 from typing import Dict, Any, List
 import json
 import os
+import firebase_admin
+from firebase_admin import credentials, firestore
 
 # Import the ProgressiveFilter class
 from .progressive_filter import ProgressiveFilter
+
+# ==================== FIREBASE INITIALIZATION ====================
+
+def initialize_firebase():
+    """Initialize Firebase Admin SDK"""
+    try:
+        # Check if Firebase is already initialized
+        firebase_admin.get_app()
+    except ValueError:
+        # Firebase not initialized, so initialize it
+        try:
+            # Try to get credentials from environment variables
+            cred_dict = {
+                "type": "service_account",
+                "project_id": os.getenv("FIREBASE_PROJECT_ID"),
+                "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
+                "private_key": os.getenv("FIREBASE_PRIVATE_KEY", "").replace("\\n", "\n"),
+                "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
+                "client_id": os.getenv("FIREBASE_CLIENT_ID"),
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                "client_x509_cert_url": os.getenv("FIREBASE_CLIENT_X509_CERT_URL")
+            }
+            
+            # Check if all required credentials are present
+            required_creds = ["project_id", "private_key", "client_email"]
+            if all(cred_dict.get(key) for key in required_creds):
+                cred = credentials.Certificate(cred_dict)
+                firebase_admin.initialize_app(cred)
+                print("Firebase initialized successfully with service account credentials")
+            else:
+                # Fallback: try to initialize with default credentials (for deployed environments)
+                firebase_admin.initialize_app()
+                print("Firebase initialized with default credentials")
+        except Exception as e:
+            print(f"Warning: Could not initialize Firebase: {e}")
+            print("Falling back to mock data")
 
 # ==================== PROGRESSIVE FILTERING STATE ====================
 
@@ -21,8 +61,61 @@ def get_progressive_filter() -> ProgressiveFilter:
 
 # ==================== HELPER FUNCTIONS ====================
 
+def _load_candidates_from_firebase() -> List[Dict[str, Any]]:
+    """Load candidates from Firebase Firestore"""
+    try:
+        initialize_firebase()
+        db = firestore.client()
+        
+        # Get all professional profiles
+        docs = db.collection('userProfiles').stream()
+        
+        candidates = []
+        for doc in docs:
+            data = doc.to_dict()
+            
+            # Map Firebase ProfessionalProfile to candidate format expected by the system
+            candidate = {
+                "id": data.get("id", doc.id),
+                "name": f"{data.get('firstName', '')} {data.get('lastName', '')}".strip(),
+                "email": data.get("email", ""),
+                "phone": data.get("phone", ""),
+                "skills": data.get("skills", []),
+                "experience": [],  # Firebase doesn't have detailed experience array
+                "education": data.get("education", []),
+                "experience_level": _map_experience_to_level(data.get("experience", 0)),
+                "total_years": data.get("experience", 0),
+                "availability": "freelance",  # Default, could be enhanced
+                "location": data.get("location", ""),
+                "languages": ["English", "Spanish"],  # Default, could be enhanced
+                "hourly_rate": 50,  # Default rate, could be enhanced
+                "profession": data.get("profession", ""),
+                "bio": data.get("bio", ""),
+                "isProfileComplete": data.get("isProfileComplete", False),
+                "createdAt": data.get("createdAt", ""),
+                "updatedAt": data.get("updatedAt", "")
+            }
+            candidates.append(candidate)
+        
+        print(f"Loaded {len(candidates)} candidates from Firebase")
+        return candidates
+        
+    except Exception as e:
+        print(f"Warning: Could not load candidates from Firebase: {e}")
+        print("Falling back to mock data")
+        return _load_mock_candidates()
+
+def _map_experience_to_level(years: int) -> str:
+    """Map years of experience to experience level"""
+    if years >= 7:
+        return "senior"
+    elif years >= 3:
+        return "mid"
+    else:
+        return "junior"
+
 def _load_mock_candidates() -> List[Dict[str, Any]]:
-    """Load mock candidates from JSON file"""
+    """Load mock candidates from JSON file (fallback)"""
     try:
         with open(os.path.join(os.path.dirname(__file__), 'mock_candidates.json'), 'r') as f:
             data = json.load(f)
@@ -97,8 +190,8 @@ def calculate_match_score(
     Returns:
         dict: Contains status, score (0-100), reasoning, strengths, and gaps.
     """
-    # Load mock candidates to find the candidate
-    candidates = _load_mock_candidates()
+    # Load candidates from Firebase
+    candidates = _load_candidates_from_firebase()
     candidate = next((c for c in candidates if c["name"].lower() == candidate_name.lower()), None)
     
     if not candidate:

@@ -36,34 +36,72 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      // Simulate AI response (replace with actual API call)
-      await new Promise(resolve => setTimeout(async () => {
-        const aiMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          content: `I received your message: "${userMessage.content}". This is a simulated response. In a real implementation, this would be connected to an AI service.`,
-          sender: 'ai',
-          timestamp: new Date()
-        };
+      // Call the conversation agent API
+      const response = await fetch('/api/conversation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: userMessage.content,
+          conversationId: conv.id,
+          resetConversation: false, // Could be enhanced to detect reset commands
+        }),
+      });
 
-        const updatedConversation = {
-          ...conv,
-          messages: [...conv.messages, aiMessage]
-        };
-        setConversation(updatedConversation);
+      if (!response.ok) {
+        throw new Error(`API responded with status: ${response.status}`);
+      }
 
-        // Update Firestore
-        try {
-          await updateDoc(doc(db, "conversations", conv.id), {
-            messages: updatedConversation.messages
-          });
-        } catch (error) {
-          console.error("Error updating conversation:", error);
-        }
-        setIsLoading(false);
-        resolve(void 0);
-      }, 1000));
+      const data = await response.json();
+
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: data.response,
+        sender: 'ai',
+        timestamp: new Date()
+      };
+
+      const updatedConversation = {
+        ...conv,
+        messages: [...conv.messages, aiMessage]
+      };
+      setConversation(updatedConversation);
+
+      // Update Firestore
+      try {
+        await updateDoc(doc(db, "conversations", conv.id), {
+          messages: updatedConversation.messages
+        });
+      } catch (error) {
+        console.error("Error updating conversation:", error);
+      }
     } catch (error) {
       console.error("Error generating AI response:", error);
+
+      // Fallback message
+      const fallbackMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "I'm sorry, I'm having trouble connecting to the candidate database right now. Please try again in a moment.",
+        sender: 'ai',
+        timestamp: new Date()
+      };
+
+      const updatedConversation = {
+        ...conv,
+        messages: [...conv.messages, fallbackMessage]
+      };
+      setConversation(updatedConversation);
+
+      // Update Firestore
+      try {
+        await updateDoc(doc(db, "conversations", conv.id), {
+          messages: updatedConversation.messages
+        });
+      } catch (error) {
+        console.error("Error updating conversation:", error);
+      }
+    } finally {
       setIsLoading(false);
     }
   };
