@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/sidebar";
 import MessageInput from "@/components/MessageInput";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, addDoc, updateDoc, doc, query, where } from "firebase/firestore";
 
 interface Message {
   id: string;
@@ -33,7 +35,7 @@ export default function ChatPage() {
 
     try {
       // Simulate AI response (replace with actual API call)
-      setTimeout(() => {
+      await new Promise(resolve => setTimeout(async () => {
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(),
           content: `I received your message: "${userMessage.content}". This is a simulated response. In a real implementation, this would be connected to an AI service.`,
@@ -47,58 +49,72 @@ export default function ChatPage() {
         };
         setConversation(updatedConversation);
 
-        // Update localStorage
-        const storedConversations = JSON.parse(localStorage.getItem("conversations") || "[]");
-        const updatedConversations = storedConversations.map((c: any) =>
-          c.id === conv.id ? updatedConversation : c
-        );
-        localStorage.setItem("conversations", JSON.stringify(updatedConversations));
+        // Update Firestore
+        try {
+          await updateDoc(doc(db, "conversations", conv.id), {
+            messages: updatedConversation.messages
+          });
+        } catch (error) {
+          console.error("Error updating conversation:", error);
+        }
         setIsLoading(false);
-      }, 1000);
+        resolve(void 0);
+      }, 1000));
     } catch (error) {
       console.error("Error generating AI response:", error);
       setIsLoading(false);
     }
   };
 
-  // Load conversation from localStorage
+  // Load conversation from Firestore
   useEffect(() => {
-    const storedConversations = localStorage.getItem("conversations");
-    if (storedConversations) {
-      const parsed = JSON.parse(storedConversations);
-      const conversationsWithDates = parsed.map((conv: any) => ({
-        ...conv,
-        timestamp: new Date(conv.timestamp),
-        messages: conv.messages?.map((msg: any) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp)
-        })) || []
-      }));
+    const loadConversation = async () => {
+      try {
+        const conversationsRef = collection(db, "conversations");
+        const querySnapshot = await getDocs(conversationsRef);
+        const conversations: Conversation[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          conversations.push({
+            id: doc.id,
+            title: data.title,
+            timestamp: data.timestamp.toDate(),
+            type: data.type,
+            messages: data.messages?.map((msg: any) => ({
+              ...msg,
+              timestamp: msg.timestamp.toDate()
+            })) || []
+          });
+        });
 
-      const currentConversation = conversationsWithDates.find((conv: Conversation) => conv.id === chatId);
-      if (currentConversation) {
-        setConversation(currentConversation);
+        const currentConversation = conversations.find((conv) => conv.id === chatId);
+        if (currentConversation) {
+          setConversation(currentConversation);
 
-        // Check if we need to generate AI response for the last user message
-        const lastMessage = currentConversation.messages[currentConversation.messages.length - 1];
-        if (lastMessage && lastMessage.sender === 'user' && !isLoading) {
-          // Check if there's no AI response after this user message
-          const messages = currentConversation.messages;
-          const lastMessageIndex = messages.length - 1;
-          const hasAIReply = lastMessageIndex > 0 && messages[lastMessageIndex - 1]?.sender === 'ai';
+          // Check if we need to generate AI response for the last user message
+          const lastMessage = currentConversation.messages[currentConversation.messages.length - 1];
+          if (lastMessage && lastMessage.sender === 'user' && !isLoading) {
+            // Check if there's no AI response after this user message
+            const messages = currentConversation.messages;
+            const lastMessageIndex = messages.length - 1;
+            const hasAIReply = lastMessageIndex > 0 && messages[lastMessageIndex - 1]?.sender === 'ai';
 
-          if (!hasAIReply) {
-            // Generate AI response for the user message
-            generateAIResponse(currentConversation, lastMessage);
+            if (!hasAIReply) {
+              // Generate AI response for the user message
+              generateAIResponse(currentConversation, lastMessage);
+            }
           }
+        } else {
+          // Conversation not found, redirect to find
+          router.push("/find");
         }
-      } else {
-        // Conversation not found, redirect to find
+      } catch (error) {
+        console.error("Error loading conversations:", error);
         router.push("/find");
       }
-    } else {
-      router.push("/find");
-    }
+    };
+
+    loadConversation();
   }, [chatId, router]);
 
     // Scroll to bottom when new messages are added
@@ -123,12 +139,14 @@ export default function ChatPage() {
     };
     setConversation(updatedConversation);
 
-    // Update localStorage
-    const storedConversations = JSON.parse(localStorage.getItem("conversations") || "[]");
-    const updatedConversations = storedConversations.map((conv: any) =>
-      conv.id === conversation.id ? updatedConversation : conv
-    );
-    localStorage.setItem("conversations", JSON.stringify(updatedConversations));
+    // Update Firestore
+    try {
+      await updateDoc(doc(db, "conversations", conversation.id), {
+        messages: updatedConversation.messages
+      });
+    } catch (error) {
+      console.error("Error updating conversation:", error);
+    }
 
     // Generate AI response
     await generateAIResponse(updatedConversation, userMessage);

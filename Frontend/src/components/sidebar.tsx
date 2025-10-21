@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
 
 interface Conversation {
   id: string;
@@ -19,42 +21,51 @@ export default function Sidebar() {
   const [menuCoords, setMenuCoords] = useState<{ top: number; left: number } | null>(null);
   const menuButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
-  // Load conversations from localStorage on mount
+  // Load conversations from Firestore on mount
   useEffect(() => {
-    const storedConversations = localStorage.getItem("conversations");
-    if (storedConversations) {
-      const parsed = JSON.parse(storedConversations);
-      // Convert timestamp strings back to Date objects
-      const conversationsWithDates = parsed.map((conv: any) => ({
-        ...conv,
-        timestamp: new Date(conv.timestamp)
-      }));
-      setConversations(conversationsWithDates);
-    } else {
-      // Add some sample conversations for demo
-      const sampleConversations: Conversation[] = [
-        {
-          id: "1",
-          title: "React Developer Position",
-          timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-          type: "job_posting"
-        },
-        {
-          id: "2",
-          title: "Looking for UI/UX Designers",
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-          type: "job_search"
-        },
-        {
-          id: "3",
-          title: "Backend Engineer - Node.js",
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-          type: "job_posting"
-        }
-      ];
-      setConversations(sampleConversations);
-      localStorage.setItem("conversations", JSON.stringify(sampleConversations));
-    }
+    const loadConversations = async () => {
+      try {
+        const conversationsRef = collection(db, "conversations");
+        const querySnapshot = await getDocs(conversationsRef);
+        const loadedConversations: Conversation[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          loadedConversations.push({
+            id: doc.id,
+            title: data.title,
+            timestamp: data.timestamp.toDate(),
+            type: data.type
+          });
+        });
+        setConversations(loadedConversations);
+      } catch (error) {
+        console.error("Error loading conversations:", error);
+        // Fallback to sample data if Firestore fails
+        const sampleConversations: Conversation[] = [
+          {
+            id: "1",
+            title: "React Developer Position",
+            timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
+            type: "job_posting"
+          },
+          {
+            id: "2",
+            title: "Looking for UI/UX Designers",
+            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
+            type: "job_search"
+          },
+          {
+            id: "3",
+            title: "Backend Engineer - Node.js",
+            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
+            type: "job_posting"
+          }
+        ];
+        setConversations(sampleConversations);
+      }
+    };
+
+    loadConversations();
   }, []);
 
   // Close menu when clicking outside
@@ -69,7 +80,7 @@ export default function Sidebar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [openMenuId]);
 
-  const createNewConversation = () => {
+  const createNewConversation = async () => {
     const newConversation: Conversation = {
       id: Date.now().toString(),
       title: "New Job Search",
@@ -77,12 +88,20 @@ export default function Sidebar() {
       type: "job_search"
     };
 
-    const updatedConversations = [newConversation, ...conversations];
-    setConversations(updatedConversations);
-    localStorage.setItem("conversations", JSON.stringify(updatedConversations));
-
-    // Navigate to find page or trigger new search
-    router.push("/find");
+    try {
+      const docRef = await addDoc(collection(db, "conversations"), {
+        title: newConversation.title,
+        timestamp: newConversation.timestamp,
+        type: newConversation.type,
+        messages: []
+      });
+      newConversation.id = docRef.id;
+      setConversations([newConversation, ...conversations]);
+      // Navigate to find page or trigger new search
+      router.push("/find");
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+    }
   };
 
   const selectConversation = (conversation: Conversation) => {
@@ -90,11 +109,15 @@ export default function Sidebar() {
     router.push(`/chat/${conversation.id}`);
   };
 
-  const deleteConversation = (conversationId: string) => {
-    const updatedConversations = conversations.filter(conv => conv.id !== conversationId);
-    setConversations(updatedConversations);
-    localStorage.setItem("conversations", JSON.stringify(updatedConversations));
-    setOpenMenuId(null);
+  const deleteConversation = async (conversationId: string) => {
+    try {
+      await deleteDoc(doc(db, "conversations", conversationId));
+      const updatedConversations = conversations.filter(conv => conv.id !== conversationId);
+      setConversations(updatedConversations);
+      setOpenMenuId(null);
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
+    }
   };
 
   const startEditing = (conversation: Conversation) => {
@@ -103,13 +126,19 @@ export default function Sidebar() {
     setOpenMenuId(null);
   };
 
-  const saveEdit = (conversationId: string) => {
+  const saveEdit = async (conversationId: string) => {
     if (editingTitle.trim()) {
-      const updatedConversations = conversations.map(conv =>
-        conv.id === conversationId ? { ...conv, title: editingTitle.trim() } : conv
-      );
-      setConversations(updatedConversations);
-      localStorage.setItem("conversations", JSON.stringify(updatedConversations));
+      try {
+        await updateDoc(doc(db, "conversations", conversationId), {
+          title: editingTitle.trim()
+        });
+        const updatedConversations = conversations.map(conv =>
+          conv.id === conversationId ? { ...conv, title: editingTitle.trim() } : conv
+        );
+        setConversations(updatedConversations);
+      } catch (error) {
+        console.error("Error updating conversation:", error);
+      }
     }
     setEditingId(null);
     setEditingTitle("");

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { setToken } from "@/lib/auth";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -40,14 +41,61 @@ export default function RegisterPage() {
         }
       }
 
-      // TODO: Send registration data (email, phone, parsedData) to backend
-      // For now, store in localStorage and navigate
-      if (parsedData) {
-        localStorage.setItem("profileData", JSON.stringify(parsedData));
-      }
+      // Create dummy JWT token for authentication
+      const userId = email; // Use email as userId for simplicity
+      const payload = {
+        userId,
+        email,
+        exp: Math.floor(Date.now() / 1000) + (365 * 24 * 60 * 60) // 1 year from now
+      };
+      const header = { alg: "HS256", typ: "JWT" };
+      const encodedHeader = btoa(JSON.stringify(header));
+      const encodedPayload = btoa(JSON.stringify(payload));
+      const signature = "dummy_signature"; // In real app, this would be signed
+      const token = `${encodedHeader}.${encodedPayload}.${signature}`;
       
-      // Store contact info
-      localStorage.setItem("contactInfo", JSON.stringify({ email, phone }));
+      setToken(token);
+
+      // Save initial profile data to Firestore if parsed
+      if (parsedData) {
+        const { db } = await import("@/lib/firebase");
+        const { doc, setDoc } = await import("firebase/firestore");
+        
+        // Sanitize the parsed data
+        const sanitizedData = {
+          personal_info: {
+            name: parsedData.personal_info?.name || "",
+            location: parsedData.personal_info?.location || "",
+            image: parsedData.personal_info?.image || "",
+          },
+          education: (parsedData.education || []).map((edu: any) => ({
+            degree: edu?.degree || "",
+            school: edu?.school || "",
+            start_date: edu?.start_date || "",
+            end_date: edu?.end_date || "",
+          })),
+          job_experience: (parsedData.job_experience || []).map((exp: any) => ({
+            role: exp?.role || "",
+            company: exp?.company || "",
+            description: exp?.description || "",
+            start_date: exp?.start_date || "",
+            end_date: exp?.end_date || "",
+          })),
+          projects: (parsedData.projects || []).map((proj: any) => ({
+            name: proj?.name || "",
+            description: proj?.description || "",
+            technologies: proj?.technologies || "",
+          })),
+          skills: parsedData.skills || "",
+        };
+        
+        await setDoc(doc(db, "userProfiles", userId), {
+          profileData: sanitizedData,
+          email,
+          phone,
+          updatedAt: new Date()
+        });
+      }
 
       // Navigate to be-found page after successful registration
       router.push("/be-found");
