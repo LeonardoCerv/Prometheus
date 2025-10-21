@@ -88,6 +88,10 @@ def _load_candidates_from_firebase() -> List[Dict[str, Any]]:
         initialize_firebase()
         db = firestore.client()
         
+        print("\n" + "="*80)
+        print("🔍 FETCHING PROFILES FROM FIREBASE")
+        print("="*80)
+        
         # Get all professional profiles from the userProfiles collection
         docs = db.collection('userProfiles').stream()
         
@@ -163,9 +167,25 @@ def _load_candidates_from_firebase() -> List[Dict[str, Any]]:
         
         if len(candidates) == 0:
             print("⚠️ No candidates found in Firebase Firestore")
+            print("="*80 + "\n")
             return []
         
-        print(f"\n✅ Successfully loaded {len(candidates)} profiles from Firebase Firestore\n")
+        print(f"\n✅ Successfully loaded {len(candidates)} profiles from Firebase Firestore")
+        print("="*80)
+        print("\n📋 ALL FETCHED PROFILES:")
+        print("="*80)
+        for idx, candidate in enumerate(candidates, 1):
+            print(f"\n{idx}. {candidate['name']} (ID: {candidate['id']})")
+            print(f"   Email: {candidate['email']}")
+            print(f"   Phone: {candidate['phone']}")
+            print(f"   Skills: {', '.join(candidate['skills'][:10])}")
+            print(f"   Experience: {candidate['total_years']} years ({candidate['experience_level']})")
+            print(f"   Location: {candidate['location']}")
+            print(f"   Profession: {candidate['profession']}")
+            print(f"   Profile Image: {candidate['profileImage'][:50] if candidate['profileImage'] else 'None'}...")
+            print(f"   Bio: {candidate['bio'][:100] if candidate['bio'] else 'None'}...")
+        print("\n" + "="*80 + "\n")
+        
         return candidates
         
     except Exception as e:
@@ -320,6 +340,8 @@ def progressive_search(
     
     Returns:
         dict: Contains status, matches, conversation context, and refinement suggestions.
+            ALSO includes main_response (text description) and profiles (top 3 candidates)
+            formatted for the chat UI.
     """
     progressive_filter = get_progressive_filter()
     
@@ -335,6 +357,107 @@ def progressive_search(
     print(f"*** Query: {query} ***")
     print(f"*** Combined filters: {result['combined_filters']} ***")
     print(f"*** Matches found: {result['matches_found']} ***\n")
+    
+    # Format response for chat UI
+    # Generate main_response text with intent feedback and natural TLDRs
+    matches_found = result['matches_found']
+    matches = result['matches']
+
+    # Simple intent feedback derived from combined filters
+    combined = result.get('combined_filters', {})
+    detected_skills = combined.get('skills', [])
+    exp_level = combined.get('experience_level', 'any')
+    availability = combined.get('availability', 'any')
+
+    # Build a simple natural-language intent summary
+    query_lower = query.lower() if isinstance(query, str) else ''
+    role_hint = ''
+    if 'react' in detected_skills:
+        # If there are backend skills too, suggest fullstack
+        if any(s in detected_skills for s in ['node.js', 'python', 'node']):
+            role_hint = 'someone who can handle both frontend and backend'
+        else:
+            role_hint = 'a React developer'
+    elif 'next.js' in detected_skills:
+        role_hint = 'a React developer who knows Next.js'
+    elif any(s in detected_skills for s in ['node.js', 'python']):
+        role_hint = 'a backend developer'
+    elif 'full stack' in query_lower or 'fullstack' in query_lower:
+        role_hint = 'someone who can work on the full stack'
+    else:
+        # generic fallback
+        role_hint = 'someone who fits what you need'
+
+    level_text = '' if exp_level == 'any' else f"{exp_level} level "
+    availability_text = '' if availability == 'any' else f", available {availability}"
+
+    intent_prefix = f"Got it — you're looking for {level_text}{role_hint}{availability_text}.\n\n"
+
+    if matches_found == 0:
+        main_response = intent_prefix + "I couldn't find anyone matching that. Try being less specific or changing some requirements."
+        profiles = []
+    else:
+        # Build simple, conversational summaries for the top 3 candidates
+        top_3 = matches[:3]
+
+        main_response = intent_prefix
+        main_response += f"I found {matches_found} {'person' if matches_found == 1 else 'people'}. Here's the top {min(3, matches_found)}:\n\n"
+
+        # Simple TLDR per candidate
+        for idx, candidate in enumerate(top_3, 1):
+            # Keep it super simple and conversational
+            skills_sample = candidate.get('matched_skills', [])[:2]
+            skills_text = ''
+            if skills_sample:
+                if len(skills_sample) == 1:
+                    skills_text = f" Great with {skills_sample[0]}."
+                else:
+                    skills_text = f" Great with {skills_sample[0]} and {skills_sample[1]}."
+            
+            years_text = f"{candidate['experience_years']} years" if candidate['experience_years'] > 1 else "1 year"
+            
+            # Use simple descriptions
+            level = candidate['experience_level']
+            if level == 'senior':
+                level_desc = "Very experienced"
+            elif level == 'mid':
+                level_desc = "Good experience"
+            else:
+                level_desc = "Getting started"
+            
+            main_response += f"{idx}. **{candidate['name']}** — {level_desc}, {years_text} in the field.{skills_text} Match: {int(candidate['score'])}%\n\n"
+
+        if matches_found > 3:
+            extra = matches_found - 3
+            main_response += f"Plus {extra} more {'person' if extra == 1 else 'people'} who match."
+
+        if result.get('refinement_suggestion'):
+            main_response += f"\n\n{result['refinement_suggestion']}"
+
+        # Format profiles for UI cards (unchanged structured objects)
+        profiles = []
+        for candidate in top_3:
+            # Generate brief AI description (kept short for cards)
+            years_text = f"{candidate['experience_years']} years" if candidate['experience_years'] != 1 else "1 year"
+            brief_desc = f"{candidate['experience_level'].capitalize()}, {years_text} experience"
+            if candidate.get('matched_skills'):
+                brief_desc += f" with {', '.join(candidate['matched_skills'][:2])}"
+
+            profiles.append({
+                "id": candidate['candidate_id'],
+                "name": candidate['name'],
+                "profilePictureUrl": candidate.get('profileImage', '') or '/default-avatar.svg',
+                "briefDescription": brief_desc,
+                "matchScore": int(candidate['score']),
+                "linkedinUrl": f"https://linkedin.com/in/{candidate['name'].lower().replace(' ', '-')}",  # Mock URL
+                "bio": candidate.get('bio', candidate.get('reasoning', ''))
+            })
+    
+    # Return formatted result with main_response and profiles
+    result['main_response'] = main_response
+    result['profiles'] = profiles
+    
+    print(f"*** DEBUG: Returning {len(profiles)} profiles in response ***\n")
     
     return result
 
