@@ -14,7 +14,12 @@ def search():
     if not query:
         return jsonify({'error': 'Query is required'}), 400
         
+    # Call the progressive search function directly
     result = progressive_search(query=query, reset_conversation=reset_conversation)
+    print(f"Server received result from agent: {type(result)}")
+    print(f"Result keys: {list(result.keys()) if isinstance(result, dict) else 'Not a dict'}")
+    print(f"Main response preview: {result.get('main_response', '')[:200] if isinstance(result, dict) else 'N/A'}...")
+    print(f"Profiles count: {len(result.get('profiles', [])) if isinstance(result, dict) else 'N/A'}")
     return jsonify(result)
 
 if __name__ == '__main__':

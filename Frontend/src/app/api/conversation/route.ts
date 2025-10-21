@@ -29,41 +29,31 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
+    console.log('Agent response data:', data);
+    console.log('Data type:', typeof data);
+    console.log('Data keys:', Object.keys(data));
+    console.log('Main response exists:', !!data.main_response);
+    console.log('Profiles exists:', !!data.profiles);
+    console.log('Profiles length:', data.profiles ? data.profiles.length : 'N/A');
 
     // Format the response for the chat interface
     let aiResponse = '';
 
-    if (data.matches && data.matches.length > 0) {
-      // Format candidate results
-      aiResponse = `I found ${data.matches_found} candidates matching your criteria:\n\n`;
-
-      data.matches.slice(0, 3).forEach((match: any, index: number) => {
-        aiResponse += `${index + 1}. **${match.name}**\n`;
-        aiResponse += `   - Score: ${match.score}%\n`;
-        aiResponse += `   - Skills: ${match.matched_skills.join(', ')}\n`;
-        aiResponse += `   - Experience: ${match.experience_years} years (${match.experience_level})\n`;
-        aiResponse += `   - Email: ${match.email}\n`;
-        aiResponse += `   - Phone: ${match.phone}\n\n`;
-      });
-
-      if (data.matches_found > 3) {
-        aiResponse += `...and ${data.matches_found - 3} more candidates.\n\n`;
-      }
-
-      if (data.refinement_suggestion) {
-        aiResponse += `💡 ${data.refinement_suggestion}`;
-      }
+    if (data.main_response) {
+      aiResponse = data.main_response;
+      console.log('Using main_response as AI response');
     } else {
-      aiResponse = "I couldn't find any candidates matching your criteria. Try broadening your search or using different keywords.";
+      aiResponse = "I couldn't process your request properly.";
+      console.log('No main_response found, using fallback');
     }
 
-    return NextResponse.json({
+    const finalResponse = {
       response: aiResponse,
-      conversationTurn: data.conversation_turn,
-      combinedFilters: data.combined_filters,
-      matchesFound: data.matches_found,
-      candidates: data.matches || []
-    });
+      profiles: data.profiles || []
+    };
+    
+    console.log('Final API response:', finalResponse);
+    return NextResponse.json(finalResponse);
 
   } catch (error) {
     console.error('Error calling conversation agent:', error);

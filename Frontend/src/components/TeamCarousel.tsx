@@ -35,12 +35,12 @@ export default function TeamCarousel({ teamMembers }: TeamCarouselProps) {
                     className="aspect-square size-full object-cover grayscale group-hover:grayscale-0"
                   />
                 </span>
-                <h3 className="tracking-tight line-clamp-1 text-left font-medium text-lg lg:text-lg text-foreground">
+                <h3 className="tracking-tight line-clamp-1 text-left font-medium text-lg lg:text-lg text-white">
                   {member.name}
                 </h3>
               </div>
               <div className="p-3 pt-0">
-                <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
+                <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-gray-500">
                   {member.description}
                 </h4>
               </div>

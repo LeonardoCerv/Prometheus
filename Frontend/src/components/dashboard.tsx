@@ -12,31 +12,31 @@ interface DashboardProps {
 export default function Dashboard({ conversationId }: DashboardProps) {
   const router = useRouter();
 
-  const teamMembers = [
+    const teamMembers = [
     {
       name: 'Kike',
       image: '/kike.jpeg',
-      description: 'Team Member'
+      description: 'Software Engineer at TechCorp, music lover, graphic designer, rock climber'
     },
     {
       name: 'Leo',
       image: '/leo.jpg',
-      description: 'Team Member'
+      description: 'Product Manager driving innovation, avid reader, traveler, coffee enthusiast'
     },
     {
       name: 'Ian',
       image: '/Ian.jpg',
-      description: 'Team Member'
+      description: 'UX Designer crafting experiences, photographer, cyclist, food blogger'
     },
     {
       name: 'Mateo',
       image: '/mateo.jpeg',
-      description: 'Team Member'
+      description: 'Data Scientist analyzing trends, chess master, musician, outdoor explorer'
     },
     {
       name: 'Jhon',
       image: '/jhon.jpg',
-      description: 'Team Member'
+      description: 'DevOps Engineer optimizing systems, gamer, fitness guru, tech writer'
     }
   ];
 
@@ -254,8 +254,8 @@ export default function Dashboard({ conversationId }: DashboardProps) {
     <main className="flex w-full flex-1 flex-col md:pl-[272px] lg:pr-0">
       <div className="pt-8 h-[calc(100dvh-7px)] flex flex-col gap-16">
         <div className="my-18 mx-auto flex flex-col gap-16">
-          <h1 className="text-5xl font-extrabold tracking-tighter sm:text-6xl text-center text-foreground font-inter">
-            find and<br />be found.
+          <h1 className="text-6xl font-extrabold tracking-tighter sm:text-8xl text-center text-foreground font-inter">
+            find.<br />
           </h1>
           <div className="flex flex-col gap-4">
             {/* Team Carousel */}

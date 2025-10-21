@@ -70,11 +70,11 @@ export default function Landing() {
                         className="aspect-square size-full object-cover grayscale group-hover:grayscale-0"
                       />
                     </span>
-                    <h3 className="tracking-tight line-clamp-1 text-left font-medium text-lg lg:text-lg text-foreground">Kike</h3>
+                    <h3 className="tracking-tight line-clamp-1 text-left font-medium text-lg lg:text-lg text-white">Kike</h3>
                   </div>
                   <div className="p-3 pt-0">
-                    <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
-                      Team Member
+                    <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-gray-500">
+                      Software Engineer at TechCorp, music lover, graphic designer, rock climber
                     </h4>
                   </div>
                 </div>
@@ -91,11 +91,11 @@ export default function Landing() {
                         className="aspect-square size-full object-cover grayscale group-hover:grayscale-0"
                       />
                     </span>
-                    <h3 className="tracking-tight line-clamp-1 text-left font-medium text-lg lg:text-lg text-foreground">Mateo</h3>
+                    <h3 className="tracking-tight line-clamp-1 text-left font-medium text-lg lg:text-lg text-white">Mateo</h3>
                   </div>
                   <div className="p-3 pt-0">
-                    <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
-                      Team Member
+                    <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-gray-500">
+                      Data Scientist analyzing trends, chess master, musician, outdoor explorer
                     </h4>
                   </div>
                 </div>
@@ -112,11 +112,11 @@ export default function Landing() {
                         className="aspect-square size-full object-cover grayscale group-hover:grayscale-0"
                       />
                     </span>
-                    <h3 className="tracking-tight line-clamp-1 text-left font-medium text-lg lg:text-lg text-foreground">Ian</h3>
+                    <h3 className="tracking-tight line-clamp-1 text-left font-medium text-lg lg:text-lg text-white">Ian</h3>
                   </div>
                   <div className="p-3 pt-0">
-                    <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
-                      Team Member
+                    <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-gray-500">
+                      UX Designer crafting experiences, photographer, cyclist, food blogger
                     </h4>
                   </div>
                 </div>
@@ -133,11 +133,11 @@ export default function Landing() {
                         className="aspect-square size-full object-cover grayscale group-hover:grayscale-0"
                       />
                     </span>
-                    <h3 className="tracking-tight line-clamp-1 text-left font-medium text-lg lg:text-lg text-foreground">Leo</h3>
+                    <h3 className="tracking-tight line-clamp-1 text-left font-medium text-lg lg:text-lg text-white">Leo</h3>
                   </div>
                   <div className="p-3 pt-0">
-                    <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
-                      Team Member
+                    <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-gray-500">
+                      Product Manager driving innovation, avid reader, traveler, coffee enthusiast
                     </h4>
                   </div>
                 </div>
@@ -154,11 +154,11 @@ export default function Landing() {
                         className="aspect-square size-full object-cover grayscale group-hover:grayscale-0"
                       />
                     </span>
-                    <h3 className="tracking-tight line-clamp-1 text-left font-medium text-lg lg:text-lg text-foreground">Jhon</h3>
+                    <h3 className="tracking-tight line-clamp-1 text-left font-medium text-lg lg:text-lg text-white">Jhon</h3>
                   </div>
                   <div className="p-3 pt-0">
-                    <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
-                      Team Member
+                    <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-gray-500">
+                      DevOps Engineer optimizing systems, gamer, fitness guru, tech writer
                     </h4>
                   </div>
                 </div>
@@ -180,7 +180,7 @@ export default function Landing() {
                   </div>
                   <div className="p-3 pt-0">
                     <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
-                      Team Member
+                      Software Engineer at TechCorp, music lover, graphic designer, rock climber
                     </h4>
                   </div>
                 </div>
@@ -201,7 +201,7 @@ export default function Landing() {
                   </div>
                   <div className="p-3 pt-0">
                     <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
-                      Team Member
+                      Software Engineer at TechCorp, music lover, graphic designer, rock climber
                     </h4>
                   </div>
                 </div>
@@ -222,7 +222,7 @@ export default function Landing() {
                   </div>
                   <div className="p-3 pt-0">
                     <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
-                      Team Member
+                      Software Engineer at TechCorp, music lover, graphic designer, rock climber
                     </h4>
                   </div>
                 </div>
@@ -243,7 +243,7 @@ export default function Landing() {
                   </div>
                   <div className="p-3 pt-0">
                     <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
-                      Team Member
+                      Software Engineer at TechCorp, music lover, graphic designer, rock climber
                     </h4>
                   </div>
                 </div>
@@ -264,7 +264,7 @@ export default function Landing() {
                   </div>
                   <div className="p-3 pt-0">
                     <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
-                      Team Member
+                      Software Engineer at TechCorp, music lover, graphic designer, rock climber
                     </h4>
                   </div>
                 </div>
@@ -286,7 +286,7 @@ export default function Landing() {
                   </div>
                   <div className="p-3 pt-0">
                     <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
-                      Team Member
+                      Software Engineer at TechCorp, music lover, graphic designer, rock climber
                     </h4>
                   </div>
                 </div>
@@ -307,7 +307,7 @@ export default function Landing() {
                   </div>
                   <div className="p-3 pt-0">
                     <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
-                      Team Member
+                      Software Engineer at TechCorp, music lover, graphic designer, rock climber
                     </h4>
                   </div>
                 </div>
@@ -328,7 +328,7 @@ export default function Landing() {
                   </div>
                   <div className="p-3 pt-0">
                     <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
-                      Team Member
+                      Software Engineer at TechCorp, music lover, graphic designer, rock climber
                     </h4>
                   </div>
                 </div>
@@ -349,7 +349,7 @@ export default function Landing() {
                   </div>
                   <div className="p-3 pt-0">
                     <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
-                      Team Member
+                      Software Engineer at TechCorp, music lover, graphic designer, rock climber
                     </h4>
                   </div>
                 </div>
@@ -371,7 +371,7 @@ export default function Landing() {
                   </div>
                   <div className="p-3 pt-0">
                     <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
-                      Team Member
+                      Software Engineer at TechCorp, music lover, graphic designer, rock climber
                     </h4>
                   </div>
                 </div>
@@ -392,7 +392,7 @@ export default function Landing() {
                   </div>
                   <div className="p-3 pt-0">
                     <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
-                      Team Member
+                      Software Engineer at TechCorp, music lover, graphic designer, rock climber
                     </h4>
                   </div>
                 </div>
@@ -413,7 +413,7 @@ export default function Landing() {
                   </div>
                   <div className="p-3 pt-0">
                     <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
-                      Team Member
+                      Software Engineer at TechCorp, music lover, graphic designer, rock climber
                     </h4>
                   </div>
                 </div>
@@ -434,7 +434,7 @@ export default function Landing() {
                   </div>
                   <div className="p-3 pt-0">
                     <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
-                      Team Member
+                      Software Engineer at TechCorp, music lover, graphic designer, rock climber
                     </h4>
                   </div>
                 </div>
@@ -455,7 +455,7 @@ export default function Landing() {
                   </div>
                   <div className="p-3 pt-0">
                     <h4 className="font-semibold tracking-tight line-clamp-3 truncate whitespace-break-spaces text-sm pb-0 text-left text-foreground">
-                      Team Member
+                      Software Engineer at TechCorp, music lover, graphic designer, rock climber
                     </h4>
                   </div>
                 </div>
