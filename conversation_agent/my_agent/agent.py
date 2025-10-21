@@ -19,30 +19,40 @@ def initialize_firebase():
     except ValueError:
         # Firebase not initialized, so initialize it
         try:
-            # Try to get credentials from environment variables
-            cred_dict = {
-                "type": "service_account",
-                "project_id": os.getenv("FIREBASE_PROJECT_ID"),
-                "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
-                "private_key": os.getenv("FIREBASE_PRIVATE_KEY", "").replace("\\n", "\n"),
-                "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
-                "client_id": os.getenv("FIREBASE_CLIENT_ID"),
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                "client_x509_cert_url": os.getenv("FIREBASE_CLIENT_X509_CERT_URL")
-            }
+            # Path to service account key file
+            service_account_path = os.path.join(
+                os.path.dirname(__file__), 
+                'serviceAccount.json'
+            )
             
-            # Check if all required credentials are present
-            required_creds = ["project_id", "private_key", "client_email"]
-            if all(cred_dict.get(key) for key in required_creds):
-                cred = credentials.Certificate(cred_dict)
+            # Try to initialize with service account file
+            if os.path.exists(service_account_path):
+                cred = credentials.Certificate(service_account_path)
                 firebase_admin.initialize_app(cred)
-                print("Firebase initialized successfully with service account credentials")
+                print("Firebase initialized successfully with service account file")
             else:
-                # Fallback: try to initialize with default credentials (for deployed environments)
-                firebase_admin.initialize_app()
-                print("Firebase initialized with default credentials")
+                # Fallback: try environment variables (for deployed environments)
+                cred_dict = {
+                    "type": "service_account",
+                    "project_id": os.getenv("FIREBASE_PROJECT_ID"),
+                    "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
+                    "private_key": os.getenv("FIREBASE_PRIVATE_KEY", "").replace("\\n", "\n"),
+                    "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
+                    "client_id": os.getenv("FIREBASE_CLIENT_ID"),
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                    "client_x509_cert_url": os.getenv("FIREBASE_CLIENT_X509_CERT_URL")
+                }
+                
+                required_creds = ["project_id", "private_key", "client_email"]
+                if all(cred_dict.get(key) for key in required_creds):
+                    cred = credentials.Certificate(cred_dict)
+                    firebase_admin.initialize_app(cred)
+                    print("Firebase initialized successfully with environment variables")
+                else:
+                    print("Warning: No Firebase credentials found")
+                    print("Falling back to mock data")
         except Exception as e:
             print(f"Warning: Could not initialize Firebase: {e}")
             print("Falling back to mock data")
@@ -51,12 +61,23 @@ def initialize_firebase():
 
 # Global progressive filter instance for maintaining conversation state
 _progressive_filter = None
+_candidates_cache = None
 
 def get_progressive_filter() -> ProgressiveFilter:
-    """Get or create the progressive filter instance"""
-    global _progressive_filter
+    """Get or create the progressive filter instance with candidates loaded"""
+    global _progressive_filter, _candidates_cache
+    
+    # Load candidates if not cached
+    if _candidates_cache is None:
+        _candidates_cache = _load_candidates_from_firebase()
+    
+    # Create or update progressive filter
     if _progressive_filter is None:
-        _progressive_filter = ProgressiveFilter()
+        _progressive_filter = ProgressiveFilter(_candidates_cache)
+    else:
+        # Update candidates in case they changed
+        _progressive_filter.set_candidates(_candidates_cache)
+    
     return _progressive_filter
 
 # ==================== HELPER FUNCTIONS ====================
@@ -67,43 +88,93 @@ def _load_candidates_from_firebase() -> List[Dict[str, Any]]:
         initialize_firebase()
         db = firestore.client()
         
-        # Get all professional profiles
+        # Get all professional profiles from the userProfiles collection
         docs = db.collection('userProfiles').stream()
         
         candidates = []
         for doc in docs:
             data = doc.to_dict()
             
-            # Map Firebase ProfessionalProfile to candidate format expected by the system
+            # Extract profileData if it exists (nested structure)
+            profile_data = data.get("profileData", {})
+            personal_info = profile_data.get("personal_info", {})
+            job_experience = profile_data.get("job_experience", [])
+            education = profile_data.get("education", [])
+            projects = profile_data.get("projects", [])
+            skills_str = profile_data.get("skills", "")
+            
+            # Parse name from personal_info or fall back to top-level fields
+            name = personal_info.get("name", "")
+            if not name:
+                first_name = data.get("firstName", "")
+                last_name = data.get("lastName", "")
+                name = f"{first_name} {last_name}".strip()
+            
+            # Extract email and phone from top level or nested structure
+            email = data.get("email", "")
+            phone = data.get("phone", "")
+            
+            # Extract location
+            location = personal_info.get("location", data.get("location", ""))
+            
+            # Parse skills from the skills string (which contains technologies, frameworks, etc.)
+            skills = _parse_skills_from_string(skills_str)
+            
+            # Calculate total years of experience from job_experience
+            total_years = _calculate_years_of_experience(job_experience)
+            
+            # Extract profession from most recent job role or top-level field
+            profession = data.get("profession", "")
+            if not profession and len(job_experience) > 0:
+                profession = job_experience[0].get("role", "")
+            
+            # Build a comprehensive bio from available data
+            bio = _build_bio_from_profile(personal_info, job_experience, projects)
+            
+            # Map to candidate format
             candidate = {
-                "id": data.get("id", doc.id),
-                "name": f"{data.get('firstName', '')} {data.get('lastName', '')}".strip(),
-                "email": data.get("email", ""),
-                "phone": data.get("phone", ""),
-                "skills": data.get("skills", []),
-                "experience": [],  # Firebase doesn't have detailed experience array
-                "education": data.get("education", []),
-                "experience_level": _map_experience_to_level(data.get("experience", 0)),
-                "total_years": data.get("experience", 0),
-                "availability": "freelance",  # Default, could be enhanced
-                "location": data.get("location", ""),
-                "languages": ["English", "Spanish"],  # Default, could be enhanced
-                "hourly_rate": 50,  # Default rate, could be enhanced
-                "profession": data.get("profession", ""),
-                "bio": data.get("bio", ""),
-                "isProfileComplete": data.get("isProfileComplete", False),
-                "createdAt": data.get("createdAt", ""),
+                "id": doc.id,
+                "name": name,
+                "email": email,
+                "phone": phone,
+                "skills": skills,
+                "experience": job_experience,  # Full job experience array
+                "education": education,
+                "experience_level": _map_experience_to_level(total_years),
+                "total_years": total_years,
+                "availability": "freelance",  # Could be enhanced with a field
+                "location": location,
+                "languages": ["English", "Spanish"],  # Could be enhanced
+                "hourly_rate": 50,  # Could be enhanced
+                "profession": profession,
+                "bio": bio,
+                "profileImage": personal_info.get("image", ""),
+                "projects": projects,
+                "skills_detailed": skills_str,  # Keep the full skills string for reference
                 "updatedAt": data.get("updatedAt", "")
             }
-            candidates.append(candidate)
+            
+            # Only add candidates with meaningful data
+            if name and email and len(skills) > 0:
+                candidates.append(candidate)
+                print(f"✅ Loaded profile: {name} ({len(skills)} skills, {total_years} years exp)")
+            else:
+                print(f"⚠️ Skipping incomplete profile: {doc.id}")
         
-        print(f"Loaded {len(candidates)} candidates from Firebase")
+        if len(candidates) == 0:
+            print("⚠️ No candidates found in Firebase Firestore")
+            return []
+        
+        print(f"\n✅ Successfully loaded {len(candidates)} profiles from Firebase Firestore\n")
         return candidates
         
     except Exception as e:
-        print(f"Warning: Could not load candidates from Firebase: {e}")
-        print("Falling back to mock data")
-        return _load_mock_candidates()
+        print(f"❌ Error loading candidates from Firebase: {e}")
+        print(f"Error type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
+        print("⚠️ No fallback data available. Please check Firebase connection.")
+        return []
 
 def _map_experience_to_level(years: int) -> str:
     """Map years of experience to experience level"""
@@ -114,15 +185,111 @@ def _map_experience_to_level(years: int) -> str:
     else:
         return "junior"
 
-def _load_mock_candidates() -> List[Dict[str, Any]]:
-    """Load mock candidates from JSON file (fallback)"""
-    try:
-        with open(os.path.join(os.path.dirname(__file__), 'mock_candidates.json'), 'r') as f:
-            data = json.load(f)
-            return data['candidates']
-    except Exception as e:
-        print(f"Warning: Could not load mock data: {e}")
+def _parse_skills_from_string(skills_str: str) -> List[str]:
+    """Parse skills from a formatted string into a list of individual skills"""
+    if not skills_str:
         return []
+    
+    skills = []
+    
+    # Split by common delimiters and extract technology names
+    # Remove category labels like "Python (Advanced)", "Frameworks & Libraries:", etc.
+    import re
+    
+    # Remove proficiency levels in parentheses
+    skills_str = re.sub(r'\([^)]*\)', '', skills_str)
+    
+    # Split by various delimiters: commas, newlines, categories
+    parts = re.split(r'[,\n]|Frameworks & Libraries:|Tools & Technologies:|Specializations:', skills_str)
+    
+    for part in parts:
+        part = part.strip()
+        if part and len(part) > 1:
+            # Further split by slashes for things like "SQL/MySQL"
+            sub_parts = part.split('/')
+            for sub_part in sub_parts:
+                sub_part = sub_part.strip()
+                if sub_part and len(sub_part) > 1 and not sub_part.endswith(':'):
+                    skills.append(sub_part)
+    
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_skills = []
+    for skill in skills:
+        skill_lower = skill.lower()
+        if skill_lower not in seen:
+            seen.add(skill_lower)
+            unique_skills.append(skill)
+    
+    return unique_skills
+
+def _calculate_years_of_experience(job_experience: List[Dict[str, Any]]) -> int:
+    """Calculate total years of experience from job experience array"""
+    if not job_experience:
+        return 0
+    
+    from datetime import datetime
+    from dateutil import parser
+    
+    total_months = 0
+    
+    for job in job_experience:
+        start_date_str = job.get("start_date", "")
+        end_date_str = job.get("end_date", "")
+        
+        if not start_date_str:
+            continue
+        
+        try:
+            # Parse start date
+            start_date = parser.parse(start_date_str, fuzzy=True)
+            
+            # Parse end date (or use current date if "Present")
+            if end_date_str.lower() in ["present", "current", ""]:
+                end_date = datetime.now()
+            else:
+                end_date = parser.parse(end_date_str, fuzzy=True)
+            
+            # Calculate months
+            months = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
+            total_months += max(0, months)
+            
+        except Exception as e:
+            print(f"Warning: Could not parse dates for job: {job.get('role', 'Unknown')} - {e}")
+            # Estimate 1 year if we can't parse
+            total_months += 12
+    
+    return max(1, total_months // 12)  # Convert to years, minimum 1
+
+def _build_bio_from_profile(personal_info: Dict[str, Any], job_experience: List[Dict[str, Any]], projects: List[Dict[str, Any]]) -> str:
+    """Build a comprehensive bio from profile data"""
+    bio_parts = []
+    
+    # Add most recent job description
+    if job_experience and len(job_experience) > 0:
+        latest_job = job_experience[0]
+        role = latest_job.get("role", "")
+        company = latest_job.get("company", "")
+        description = latest_job.get("description", "")
+        
+        if role and company:
+            bio_parts.append(f"Currently working as {role} at {company}.")
+        
+        if description:
+            # Take first 200 characters of description
+            short_desc = description[:200] + "..." if len(description) > 200 else description
+            bio_parts.append(short_desc)
+    
+    # Add notable projects
+    if projects and len(projects) > 0:
+        notable_project = projects[0]
+        project_name = notable_project.get("name", "")
+        if project_name:
+            bio_parts.append(f"Notable project: {project_name}")
+    
+    return " ".join(bio_parts) if bio_parts else "Professional profile"
+
+
 
 # ==================== TOOL 1: PROGRESSIVE CANDIDATE SEARCH ====================
 
