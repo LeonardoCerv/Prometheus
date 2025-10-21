@@ -144,33 +144,67 @@ def reset_search(tool_context: ToolContext = None) -> dict:
         "message": "Search reset. Ready for a new candidate search."
     }
 
-# ==================== TOOL 4: GET CONVERSATION SUMMARY ====================
+# ==================== TOOL 4: GENERATE JOB DESCRIPTION ====================
 
-def get_search_summary(tool_context: ToolContext = None) -> dict:
-    """Gets a summary of the current search conversation and applied filters.
+def generate_job_description(tool_context: ToolContext = None) -> dict:
+    """Generates a professional job description based on the search conversation.
     
-    Shows all queries made, combined filters applied, and how many candidates
-    are currently in the filtered set.
+    Analyzes all the queries and filters applied during the conversation to create
+    a comprehensive job description including required skills, experience level,
+    availability, and responsibilities.
     
     Returns:
-        dict: Summary of the search conversation
+        dict: Contains the generated job description with all relevant sections
     """
     progressive_filter = get_progressive_filter()
     summary = progressive_filter.get_conversation_summary()
     
-    print(f"\n*** DEBUG: Search summary - {summary['turns']} turns, {summary['candidates_remaining']} candidates remaining ***\n")
+    if summary['turns'] == 0:
+        print(f"\n*** DEBUG: Cannot generate job description - no search queries yet ***\n")
+        return {
+            "status": "error",
+            "message": "No search queries have been made yet. Please start a candidate search first."
+        }
     
-    return {
+    # Get the combined filters from the conversation
+    # We need to reconstruct the filters from the conversation history
+    all_skills = []
+    experience_level = "any"
+    availability = "any"
+    
+    for turn in summary['history']:
+        reqs = turn['requirements']
+        all_skills.extend(reqs['skills'])
+        
+        if reqs['experience_level'] != "any":
+            experience_level = reqs['experience_level']
+        if reqs['availability'] != "any":
+            availability = reqs['availability']
+    
+    # Remove duplicates from skills
+    all_skills = list(set(all_skills))
+    
+    print(f"\n*** DEBUG: Generating job description - Skills: {all_skills}, Level: {experience_level}, Availability: {availability} ***\n")
+    
+    # Build the job description components
+    job_data = {
         "status": "success",
-        "summary": summary
+        "conversation_turns": summary['turns'],
+        "queries": summary['queries'],
+        "required_skills": all_skills,
+        "experience_level": experience_level,
+        "availability": availability,
+        "candidates_matching": summary['candidates_remaining']
     }
+    
+    return job_data
 
 # ==================== WRAP TOOLS ====================
 
 progressive_search_tool = FunctionTool(progressive_search)
 calculate_match_tool = FunctionTool(calculate_match_score)
 reset_search_tool = FunctionTool(reset_search)
-search_summary_tool = FunctionTool(get_search_summary)
+generate_jd_tool = FunctionTool(generate_job_description)
 
 # ==================== DEFINE THE AGENT ====================
 
@@ -217,7 +251,22 @@ root_agent = Agent(
         "# Other Tools:\n"
         "- Use 'calculate_match_score' when asked to analyze a specific candidate against a job\n"
         "- Use 'reset_search' when they explicitly want to 'start over' or 'new search'\n"
-        "- Use 'get_search_summary' when they ask 'what have we searched for' or 'summarize our search'\n\n"
+        "- Use 'generate_job_description' when they ask to 'create a job description', 'generate JD', "
+        "'write a job post', or 'summarize this into a job description'\n\n"
+        
+        "# Generating Job Descriptions:\n"
+        "When using generate_job_description:\n"
+        "1. Call the tool to get the structured data (skills, experience level, availability)\n"
+        "2. Create a professional, well-formatted job description that includes:\n"
+        "   - A compelling job title based on the role and level\n"
+        "   - An engaging overview/summary\n"
+        "   - Key responsibilities (inferred from the role type)\n"
+        "   - Required skills (from the search queries)\n"
+        "   - Experience level requirements\n"
+        "   - Employment type (based on availability)\n"
+        "   - Nice-to-have skills (related to required ones)\n"
+        "3. Make it sound professional and appealing to candidates\n"
+        "4. Mention how many candidates match this description\n\n"
         
         "# Conversation Style:\n"
         "- Be friendly and professional\n"
@@ -237,6 +286,6 @@ root_agent = Agent(
         progressive_search_tool,
         calculate_match_tool,
         reset_search_tool,
-        search_summary_tool
+        generate_jd_tool
     ],
 )
