@@ -1,0 +1,10 @@
+# Dependencies
+venv/
+__pycache__/
+
+# Environment variables
+.env
+
+# Credentials
+hack-475720-a80832b916e2.json
+token.json
