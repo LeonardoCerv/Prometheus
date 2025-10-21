@@ -1,6 +1,7 @@
 import os
 from flask import Flask, request, jsonify
 from twilio.twiml.messaging_response import MessagingResponse
+from twilio.request_validator import RequestValidator
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -82,6 +83,15 @@ def test_calendar():
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
     """Responde a los mensajes entrantes de WhatsApp desde Twilio."""
+    # Validar que la solicitud proviene de Twilio
+    validator = RequestValidator(os.getenv("TWILIO_AUTH_TOKEN"))
+    url = request.url
+    post_vars = request.form.to_dict()
+    twilio_signature = request.headers.get("X-Twilio-Signature", "")
+
+    if not validator.validate(url, post_vars, twilio_signature):
+        return "Error: Invalid signature", 403
+
     try:
         # Obtener datos del mensaje
         incoming_msg = request.values.get("Body", "").strip()

@@ -1,6 +1,5 @@
 import datetime
 import os
-from zoneinfo import ZoneInfo
 from google.oauth2.credentials import Credentials
 from google.oauth2 import service_account
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -12,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Scopes necesarios para Google Calendar
-SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
 
 
 def check_calendar_availability():
@@ -94,56 +93,71 @@ def check_calendar_availability():
         raise error
 
 
-def get_weather(city: str) -> dict:
-    """Retrieves the current weather report for a specified city.
+def schedule_meeting(summary: str, start_time: str, end_time: str, attendees: list = None) -> dict:
+    """
+    Programa una nueva reunión en el calendario de Google.
 
     Args:
-        city (str): The name of the city for which to retrieve the weather report.
+        summary (str): Título del evento.
+        start_time (str): Hora de inicio del evento en formato ISO 8601 (ej. "2023-10-27T09:00:00-07:00").
+        end_time (str): Hora de finalización del evento en formato ISO 8601.
+        attendees (list): Lista de correos electrónicos de los asistentes.
 
     Returns:
-        dict: status and result or error msg.
+        dict: Información del evento creado o mensaje de error.
     """
-    if city.lower() == "new york":
-        return {
-            "status": "success",
-            "report": (
-                "The weather in New York is sunny with a temperature of 25 degrees"
-                " Celsius (77 degrees Fahrenheit)."
-            ),
+    creds = None
+    current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    credentials_filename = os.getenv("GOOGLE_CREDENTIALS_FILE", "hack-475720-a80832b916e2.json")
+    credentials_file = os.path.join(current_dir, credentials_filename)
+
+    try:
+        if os.path.exists(credentials_file):
+            creds = service_account.Credentials.from_service_account_file(
+                credentials_file, scopes=SCOPES
+            )
+        elif os.path.exists(os.path.join(current_dir, "token.json")):
+            creds = Credentials.from_authorized_user_file(
+                os.path.join(current_dir, "token.json"), SCOPES
+            )
+
+        if not creds:
+            raise Exception(f"No se pudieron cargar las credenciales desde: {credentials_file}")
+
+        if hasattr(creds, 'expired') and creds.expired and hasattr(creds, 'refresh_token') and creds.refresh_token:
+            creds.refresh(Request())
+
+        service = build("calendar", "v3", credentials=creds)
+
+        event = {
+            'summary': summary,
+            'start': {
+                'dateTime': start_time,
+                'timeZone': 'America/Los_Angeles',  # Ajusta la zona horaria según sea necesario
+            },
+            'end': {
+                'dateTime': end_time,
+                'timeZone': 'America/Los_Angeles',  # Ajusta la zona horaria según sea necesario
+            },
+            'attendees': [{'email': att} for att in attendees] if attendees else [],
+            'reminders': {
+                'useDefault': False,
+                'overrides': [
+                    {'method': 'email', 'minutes': 30},
+                    {'method': 'popup', 'minutes': 10},
+                ],
+            },
         }
-    else:
-        return {
-            "status": "error",
-            "error_message": f"Weather information for '{city}' is not available.",
-        }
 
+        event = service.events().insert(calendarId='primary', body=event, sendNotifications=True).execute()
+        print(f"✅ Evento creado: {event.get('htmlLink')}")
+        return {"status": "success", "event_link": event.get('htmlLink'), "event_id": event.get('id')}
 
-def get_current_time(city: str) -> dict:
-    """Returns the current time in a specified city.
-
-    Args:
-        city (str): The name of the city for which to retrieve the current time.
-
-    Returns:
-        dict: status and result or error msg.
-    """
-
-    if city.lower() == "new york":
-        tz_identifier = "America/New_York"
-    else:
-        return {
-            "status": "error",
-            "error_message": (
-                f"Sorry, I don't have timezone information for {city}."
-            ),
-        }
-
-    tz = ZoneInfo(tz_identifier)
-    now = datetime.datetime.now(tz)
-    report = (
-        f'The current time in {city} is {now.strftime("%Y-%m-%d %H:%M:%S %Z%z")}'
-    )
-    return {"status": "success", "report": report}
+    except Exception as error:
+        print(f"❌ Ocurrió un error al programar la reunión: {error}")
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": str(error)}
 
 
 # Google ADK Agent
@@ -151,9 +165,9 @@ from google.adk.agents.llm_agent import Agent
 
 root_agent = Agent(
     model='gemini-2.5-flash',
-    name='calendar_weather_agent',
-    description='A helpful assistant for calendar availability, weather and time questions.',
-    instruction='Answer user questions about calendar availability, time and weather to the best of your knowledge. Use the available tools to fetch real-time information.',
-    tools=[check_calendar_availability, get_weather, get_current_time],
+    name='calendar_agent',
+    description='A helpful assistant for calendar availability and scheduling.',
+    instruction='Answer user questions about calendar availability and scheduling to the best of your knowledge. Use the available tools to fetch real-time information.',
+    tools=[check_calendar_availability, schedule_meeting],
 )
 
