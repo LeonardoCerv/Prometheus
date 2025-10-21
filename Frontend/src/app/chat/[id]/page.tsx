@@ -4,8 +4,10 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/sidebar";
 import MessageInput from "@/components/MessageInput";
+import Dashboard from "@/components/dashboard";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, addDoc, updateDoc, doc, query, where } from "firebase/firestore";
+import { getCurrentUser, isAuthenticated } from "@/lib/auth";
 
 interface Message {
   id: string;
@@ -70,8 +72,20 @@ export default function ChatPage() {
   useEffect(() => {
     const loadConversation = async () => {
       try {
+        if (!isAuthenticated()) {
+          router.push("/");
+          return;
+        }
+
+        const user = getCurrentUser();
+        if (!user) {
+          router.push("/");
+          return;
+        }
+
         const conversationsRef = collection(db, "conversations");
-        const querySnapshot = await getDocs(conversationsRef);
+        const q = query(conversationsRef, where("userId", "==", user.userId));
+        const querySnapshot = await getDocs(q);
         const conversations: Conversation[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data();
@@ -89,6 +103,13 @@ export default function ChatPage() {
 
         const currentConversation = conversations.find((conv) => conv.id === chatId);
         if (currentConversation) {
+          // Check if conversation has messages
+          if (currentConversation.messages.length === 0) {
+            // Empty conversation, redirect to find
+            router.push("/find");
+            return;
+          }
+
           setConversation(currentConversation);
 
           // Check if we need to generate AI response for the last user message
@@ -175,31 +196,25 @@ export default function ChatPage() {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
-            {conversation.messages.length === 0 ? (
-              <div className="text-center text-muted py-8">
-                <p>Start a conversation by typing a message below.</p>
-              </div>
-            ) : (
-              conversation.messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div className="flex flex-col">
-                    {msg.sender === 'ai' && <p className="text-primary text-base mb-1 px-6 text-left font-averia">Prometheus</p>}
-                    <div
-                      className={`rounded-lg px-6 py-3 ${
-                        msg.sender === 'user'
-                          ? 'w-full bg-primary text-foreground'
-                          : 'w-fit max-w-[70%] bg-transparent text-foreground'
-                      }`}
-                    >
-                      <p className={`text-sm ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}>{msg.content}</p>
-                    </div>
+            {conversation.messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className="flex flex-col">
+                  {msg.sender === 'ai' && <p className="text-primary text-base mb-1 px-6 text-left font-averia">Prometheus</p>}
+                  <div
+                    className={`rounded-lg px-6 py-3 ${
+                      msg.sender === 'user'
+                        ? 'w-full bg-primary text-foreground'
+                        : 'w-fit max-w-[70%] bg-transparent text-foreground'
+                    }`}
+                  >
+                    <p className={`text-sm ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}>{msg.content}</p>
                   </div>
                 </div>
-              ))
-            )}
+              </div>
+            ))}
             {isLoading && (
               <div className="flex justify-start">
                 <div className="bg-muted rounded-lg px-6 py-3 max-w-[70%]">

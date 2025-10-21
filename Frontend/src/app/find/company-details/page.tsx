@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { db } from "@/lib/firebase";
+import { doc, setDoc } from "firebase/firestore";
+import { getCurrentUser, isAuthenticated } from "@/lib/auth";
 
-interface StartupDetails {
+interface CompanyDetails {
   companyName: string;
   userName: string;
   userRole: string;
@@ -12,9 +15,9 @@ interface StartupDetails {
   description: string;
 }
 
-export default function StartupDetailsPage() {
+export default function CompanyDetailsPage() {
   const router = useRouter();
-  const [details, setDetails] = useState<StartupDetails>({
+  const [details, setDetails] = useState<CompanyDetails>({
     companyName: "",
     userName: "",
     userRole: "",
@@ -24,7 +27,15 @@ export default function StartupDetailsPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleInputChange = (field: keyof StartupDetails, value: string) => {
+  // Check authentication on mount
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      router.push("/");
+      return;
+    }
+  }, [router]);
+
+  const handleInputChange = (field: keyof CompanyDetails, value: string) => {
     setDetails(prev => ({ ...prev, [field]: value }));
   };
 
@@ -33,13 +44,24 @@ export default function StartupDetailsPage() {
     setIsSubmitting(true);
 
     try {
-      // Store startup details in localStorage
-      localStorage.setItem("startupDetails", JSON.stringify(details));
+      const user = getCurrentUser();
+      if (!user) {
+        router.push("/");
+        return;
+      }
+
+      // Save company details to Firebase using user ID
+      await setDoc(doc(db, "companyProfiles", user.userId), {
+        ...details,
+        userId: user.userId,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
 
       // Navigate to find page
       router.push("/find");
     } catch (error) {
-      console.error("Error saving startup details:", error);
+      console.error("Error saving company details:", error);
       alert("Failed to save details. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -70,20 +92,14 @@ export default function StartupDetailsPage() {
   return (
     <main className="flex w-full flex-1 flex-col min-h-screen bg-background">
       <div className="flex-1 flex flex-col px-4 py-8">
-        {/* Logo and Back Button */}
-        <div className="flex justify-between items-center px-4 mb-12">
+        {/* Logo */}
+        <div className="flex justify-start items-center px-4 mb-12">
           <a href="/" className="flex items-center gap-4">
             <img src="/prometheus.svg" alt="Logo" width="64" height="64" />
             <p className="text-2xl font-medium leading-6 tracking-base text-foreground font-cormorant">
               <span className="text-primary text-2xl font-averia font-semibold">Prometheus</span>
             </p>
           </a>
-          <button
-            onClick={() => router.back()}
-            className="relative inline-flex items-center justify-center text-base font-semibold tracking-base shadow ring-offset-background transition-colors focus-visible:outline-none disabled:opacity-50 border border-muted hover:bg-background/80 h-[42px] px-8 py-2 text-foreground"
-          >
-            back
-          </button>
         </div>
 
         {/* Main Content */}
@@ -92,7 +108,7 @@ export default function StartupDetailsPage() {
             {/* Title */}
             <div className="text-center mb-12 -mt-16">
               <h1 className="text-5xl font-extrabold tracking-tighter text-foreground font-inter mb-4">
-                tell us about your startup
+                tell us about your company
               </h1>
               <p className="text-lg font-medium leading-6 tracking-base text-primary">
                 Help us find the perfect talent for your team
@@ -207,7 +223,7 @@ export default function StartupDetailsPage() {
                     onChange={(e) => handleInputChange("description", e.target.value)}
                     rows={4}
                     className="w-full bg-background border border-muted px-4 py-3 text-foreground outline-none focus:border-primary transition-colors resize-none rounded"
-                    placeholder="Tell us about your mission, what you do, and what makes your startup unique..."
+                    placeholder="Tell us about your mission, what you do, and what makes your company unique..."
                   />
                 </div>
               </div>

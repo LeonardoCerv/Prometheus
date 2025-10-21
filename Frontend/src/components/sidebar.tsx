@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from "firebase/firestore";
+import { getCurrentUser, isAuthenticated } from "@/lib/auth";
 
 interface Conversation {
   id: string;
@@ -25,17 +26,32 @@ export default function Sidebar() {
   useEffect(() => {
     const loadConversations = async () => {
       try {
+        if (!isAuthenticated()) {
+          setConversations([]);
+          return;
+        }
+
+        const user = getCurrentUser();
+        if (!user) {
+          setConversations([]);
+          return;
+        }
+
         const conversationsRef = collection(db, "conversations");
-        const querySnapshot = await getDocs(conversationsRef);
+        const q = query(conversationsRef, where("userId", "==", user.userId));
+        const querySnapshot = await getDocs(q);
         const loadedConversations: Conversation[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          loadedConversations.push({
-            id: doc.id,
-            title: data.title,
-            timestamp: data.timestamp.toDate(),
-            type: data.type
-          });
+          // Only include conversations that have messages
+          if (data.messages && data.messages.length > 0) {
+            loadedConversations.push({
+              id: doc.id,
+              title: data.title,
+              timestamp: data.timestamp.toDate(),
+              type: data.type
+            });
+          }
         });
         setConversations(loadedConversations);
       } catch (error) {
@@ -81,27 +97,8 @@ export default function Sidebar() {
   }, [openMenuId]);
 
   const createNewConversation = async () => {
-    const newConversation: Conversation = {
-      id: Date.now().toString(),
-      title: "New Job Search",
-      timestamp: new Date(),
-      type: "job_search"
-    };
-
-    try {
-      const docRef = await addDoc(collection(db, "conversations"), {
-        title: newConversation.title,
-        timestamp: newConversation.timestamp,
-        type: newConversation.type,
-        messages: []
-      });
-      newConversation.id = docRef.id;
-      setConversations([newConversation, ...conversations]);
-      // Navigate to find page or trigger new search
-      router.push("/find");
-    } catch (error) {
-      console.error("Error creating conversation:", error);
-    }
+    // Navigate directly to the find/dashboard page instead of creating empty conversation
+    router.push("/find");
   };
 
   const selectConversation = (conversation: Conversation) => {

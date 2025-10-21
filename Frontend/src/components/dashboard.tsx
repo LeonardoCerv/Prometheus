@@ -1,8 +1,15 @@
 import TeamCarousel from './TeamCarousel';
 import MessageInput from './MessageInput';
 import { useRouter } from 'next/navigation';
+import { db } from "@/lib/firebase";
+import { collection, addDoc, getDocs, query, where, doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { getCurrentUser } from "@/lib/auth";
 
-export default function Dashboard() {
+interface DashboardProps {
+  conversationId?: string;
+}
+
+export default function Dashboard({ conversationId }: DashboardProps) {
   const router = useRouter();
 
   const teamMembers = [
@@ -33,60 +40,215 @@ export default function Dashboard() {
     }
   ];
 
-  const handleSendMessage = (message: string) => {
-    // Create new conversation
-    const newConversation = {
-      id: Date.now().toString(),
-      title: message.length > 50 ? message.substring(0, 50) + '...' : message,
-      timestamp: new Date(),
-      type: 'job_search' as const,
-      messages: [{
+  const handleSendMessage = async (message: string) => {
+    try {
+      const user = getCurrentUser();
+      if (!user) {
+        router.push("/");
+        return;
+      }
+
+      if (conversationId) {
+        // Update existing conversation
+        const conversationRef = doc(db, "conversations", conversationId);
+        const newMessage = {
+          id: Date.now().toString(),
+          content: message,
+          sender: 'user' as const,
+          timestamp: new Date()
+        };
+
+        await updateDoc(conversationRef, {
+          messages: arrayUnion(newMessage)
+        });
+
+        // Also update localStorage
+        const existingConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+        const conversationIndex = existingConversations.findIndex((conv: any) => conv.id === conversationId);
+        if (conversationIndex !== -1) {
+          existingConversations[conversationIndex].messages.push(newMessage);
+          localStorage.setItem('conversations', JSON.stringify(existingConversations));
+        }
+
+        // Stay on the same page - no navigation needed
+        return;
+      }
+
+      const title = message.length > 50 ? message.substring(0, 50) + '...' : message;
+
+      // Check if a conversation with this title already exists for this user
+      const conversationsRef = collection(db, "conversations");
+      const q = query(conversationsRef, where("title", "==", title), where("userId", "==", user.userId));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        // Conversation already exists, navigate to it
+        const existingConversation = querySnapshot.docs[0];
+        router.push(`/chat/${existingConversation.id}`);
+        return;
+      }
+
+      // Create new conversation in Firestore
+      const docRef = await addDoc(collection(db, "conversations"), {
+        title: title,
+        timestamp: new Date(),
+        type: 'job_search' as const,
+        userId: user.userId,
+        messages: [{
+          id: Date.now().toString(),
+          content: message,
+          sender: 'user' as const,
+          timestamp: new Date()
+        }]
+      });
+
+      // Also save to localStorage for consistency
+      const newConversation = {
+        id: docRef.id,
+        title: title,
+        timestamp: new Date(),
+        type: 'job_search' as const,
+        messages: [{
+          id: Date.now().toString(),
+          content: message,
+          sender: 'user' as const,
+          timestamp: new Date()
+        }]
+      };
+
+      const existingConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+      const updatedConversations = [newConversation, ...existingConversations];
+      localStorage.setItem('conversations', JSON.stringify(updatedConversations));
+
+      // Navigate to the new chat
+      router.push(`/chat/${docRef.id}`);
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+      // Fallback: create in localStorage only
+      const title = message.length > 50 ? message.substring(0, 50) + '...' : message;
+      const newConversation = {
         id: Date.now().toString(),
-        content: message,
-        sender: 'user' as const,
-        timestamp: new Date()
-      }]
-    };
+        title: title,
+        timestamp: new Date(),
+        type: 'job_search' as const,
+        messages: [{
+          id: Date.now().toString(),
+          content: message,
+          sender: 'user' as const,
+          timestamp: new Date()
+        }]
+      };
 
-    // Get existing conversations
-    const existingConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+      const existingConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+      const updatedConversations = [newConversation, ...existingConversations];
+      localStorage.setItem('conversations', JSON.stringify(updatedConversations));
 
-    // Add new conversation to the beginning
-    const updatedConversations = [newConversation, ...existingConversations];
-
-    // Save to localStorage
-    localStorage.setItem('conversations', JSON.stringify(updatedConversations));
-
-    // Navigate to the new chat
-    router.push(`/chat/${newConversation.id}`);
+      router.push(`/chat/${newConversation.id}`);
+    }
   };
 
-  const handleButtonClick = (buttonText: string) => {
-    // Create new conversation with button text as message
-    const newConversation = {
-      id: Date.now().toString(),
-      title: buttonText.length > 50 ? buttonText.substring(0, 50) + '...' : buttonText,
-      timestamp: new Date(),
-      type: 'job_search' as const,
-      messages: [{
+  const handleButtonClick = async (buttonText: string) => {
+    try {
+      const user = getCurrentUser();
+      if (!user) {
+        router.push("/");
+        return;
+      }
+
+      if (conversationId) {
+        // Update existing conversation
+        const conversationRef = doc(db, "conversations", conversationId);
+        const newMessage = {
+          id: Date.now().toString(),
+          content: buttonText,
+          sender: 'user' as const,
+          timestamp: new Date()
+        };
+
+        await updateDoc(conversationRef, {
+          messages: arrayUnion(newMessage)
+        });
+
+        // Also update localStorage
+        const existingConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+        const conversationIndex = existingConversations.findIndex((conv: any) => conv.id === conversationId);
+        if (conversationIndex !== -1) {
+          existingConversations[conversationIndex].messages.push(newMessage);
+          localStorage.setItem('conversations', JSON.stringify(existingConversations));
+        }
+
+        // Stay on the same page - no navigation needed
+        return;
+      }
+
+      // Check if a conversation with this title already exists for this user
+      const conversationsRef = collection(db, "conversations");
+      const q = query(conversationsRef, where("title", "==", buttonText), where("userId", "==", user.userId));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        // Conversation already exists, navigate to it
+        const existingConversation = querySnapshot.docs[0];
+        router.push(`/chat/${existingConversation.id}`);
+        return;
+      }
+
+      // Create new conversation in Firestore
+      const docRef = await addDoc(collection(db, "conversations"), {
+        title: buttonText,
+        timestamp: new Date(),
+        type: 'job_search' as const,
+        userId: user.userId,
+        messages: [{
+          id: Date.now().toString(),
+          content: buttonText,
+          sender: 'user' as const,
+          timestamp: new Date()
+        }]
+      });
+
+      // Also save to localStorage for consistency
+      const newConversation = {
+        id: docRef.id,
+        title: buttonText,
+        timestamp: new Date(),
+        type: 'job_search' as const,
+        messages: [{
+          id: Date.now().toString(),
+          content: buttonText,
+          sender: 'user' as const,
+          timestamp: new Date()
+        }]
+      };
+
+      const existingConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+      const updatedConversations = [newConversation, ...existingConversations];
+      localStorage.setItem('conversations', JSON.stringify(updatedConversations));
+
+      // Navigate to the new chat
+      router.push(`/chat/${docRef.id}`);
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+      // Fallback: create in localStorage only
+      const newConversation = {
         id: Date.now().toString(),
-        content: buttonText,
-        sender: 'user' as const,
-        timestamp: new Date()
-      }]
-    };
+        title: buttonText,
+        timestamp: new Date(),
+        type: 'job_search' as const,
+        messages: [{
+          id: Date.now().toString(),
+          content: buttonText,
+          sender: 'user' as const,
+          timestamp: new Date()
+        }]
+      };
 
-    // Get existing conversations
-    const existingConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+      const existingConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+      const updatedConversations = [newConversation, ...existingConversations];
+      localStorage.setItem('conversations', JSON.stringify(updatedConversations));
 
-    // Add new conversation to the beginning
-    const updatedConversations = [newConversation, ...existingConversations];
-
-    // Save to localStorage
-    localStorage.setItem('conversations', JSON.stringify(updatedConversations));
-
-    // Navigate to the new chat
-    router.push(`/chat/${newConversation.id}`);
+      router.push(`/chat/${newConversation.id}`);
+    }
   };
   return (
     <main className="flex w-full flex-1 flex-col md:pl-[272px] lg:pr-0">
@@ -141,28 +303,6 @@ export default function Dashboard() {
                   <button onClick={() => handleButtonClick("i need to hire a react engineer")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border border-muted px-4 py-1 text-foreground hover:text-primary border-muted">i need to hire a react engineer</button>
                   <button onClick={() => handleButtonClick("show me content creators")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me content creators</button>
                   <button onClick={() => handleButtonClick("experts on tiktok")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">experts on tiktok</button>
-              </div>
-            </div>
-            {/* Carousel for bottom-Buttons */}
-              <div className="relative button-carousel-container" role="region" aria-roledescription="carousel">
-              <div className="gap-4 bottom-button-carousel">
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">looking for a marketer</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me hardware people</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">need a producer for my album</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border border-muted px-4 py-1 text-foreground hover:text-primary border-muted">i need to hire a react engineer</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me content creators</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">experts on tiktok</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">who are some people i should invest in?</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">tell me the legend of naveed</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">i'm building in gaming</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-1 py-1 text-foreground hover:text-primary border-muted">show me fast growing projects</button>
-                  {/* Duplicate buttons for infinite loop */}
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">looking for a marketer</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me hardware people</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">need a producer for my album</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border border-muted px-4 py-1 text-foreground hover:text-primary border-muted">i need to hire a react engineer</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me content creators</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">experts on tiktok</button>
               </div>
             </div>
           </div>

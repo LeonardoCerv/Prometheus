@@ -248,7 +248,7 @@ export default function CompanyProfilePage() {
                     onChange={(e) => handleInputChange("description", e.target.value)}
                     rows={4}
                     className="w-full bg-background border border-muted px-4 py-3 text-foreground outline-none focus:border-primary transition-colors resize-none rounded"
-                    placeholder="Tell us about your mission, what you do, and what makes your startup unique..."
+                    placeholder="Tell us about your mission, what you do, and what makes your company unique..."
                   />
                 </div>
               </div>

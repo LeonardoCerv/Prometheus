@@ -7,8 +7,6 @@ import ProfilePreview from "@/components/ProfilePreview";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { getCurrentUser, removeToken, isAuthenticated } from "@/lib/auth";
-import { storage } from "@/lib/firebase";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export interface ProfileData {
   personal_info: {
@@ -44,7 +42,6 @@ export default function BeFoundPage() {
   const [phone, setPhone] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [originalProfileData, setOriginalProfileData] = useState<ProfileData | null>(null);
-  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [profileData, setProfileData] = useState<ProfileData>({
     personal_info: {
       name: "",
@@ -57,32 +54,32 @@ export default function BeFoundPage() {
     skills: "",
   });
   // Sanitize profile data to ensure no null values for controlled inputs
-  const sanitizeProfileData = (data: any): ProfileData => {
+  const sanitizeProfileData = (data: ProfileData): ProfileData => {
     return {
       personal_info: {
-        name: String(data.personal_info?.name || ""),
-        location: String(data.personal_info?.location || ""),
-        image: String(data.personal_info?.image || ""),
+        name: data.personal_info?.name || "",
+        location: data.personal_info?.location || "",
+        image: data.personal_info?.image || "",
       },
-      education: (Array.isArray(data.education) ? data.education : []).map((edu: any) => ({
-        degree: String(edu?.degree || ""),
-        school: String(edu?.school || ""),
-        start_date: String(edu?.start_date || ""),
-        end_date: String(edu?.end_date || ""),
+      education: (data.education || []).map((edu) => ({
+        degree: edu?.degree || "",
+        school: edu?.school || "",
+        start_date: edu?.start_date || "",
+        end_date: edu?.end_date || "",
       })),
-      job_experience: (Array.isArray(data.job_experience) ? data.job_experience : []).map((exp: any) => ({
-        role: String(exp?.role || ""),
-        company: String(exp?.company || ""),
-        description: String(exp?.description || ""),
-        start_date: String(exp?.start_date || ""),
-        end_date: String(exp?.end_date || ""),
+      job_experience: (data.job_experience || []).map((exp) => ({
+        role: exp?.role || "",
+        company: exp?.company || "",
+        description: exp?.description || "",
+        start_date: exp?.start_date || "",
+        end_date: exp?.end_date || "",
       })),
-      projects: (Array.isArray(data.projects) ? data.projects : []).map((proj: any) => ({
-        name: String(proj?.name || ""),
-        description: String(proj?.description || ""),
-        technologies: String(proj?.technologies || ""),
+      projects: (data.projects || []).map((proj) => ({
+        name: proj?.name || "",
+        description: proj?.description || "",
+        technologies: proj?.technologies || "",
       })),
-      skills: String(data.skills || ""),
+      skills: data.skills || "",
     };
   };
 
@@ -128,46 +125,19 @@ export default function BeFoundPage() {
 
     setIsSaving(true);
     try {
-      let finalProfileData = { ...profileData };
-
-      // If there's a selected image file, upload it first
-      if (selectedImageFile) {
-        console.log("Uploading selected image file...");
-        const timestamp = Date.now();
-        const filename = `profile-images/${timestamp}_${selectedImageFile.name}`;
-        const storageRef = ref(storage, filename);
-        
-        const uploadResult = await uploadBytes(storageRef, selectedImageFile);
-        console.log("Image upload completed:", uploadResult);
-        
-        const downloadURL = await getDownloadURL(storageRef);
-        console.log("Got download URL:", downloadURL);
-        
-        // Update the profile data with the uploaded URL
-        finalProfileData.personal_info.image = downloadURL;
-        
-        // Clear the selected file
-        setSelectedImageFile(null);
-      }
-
-      // Deep clone and sanitize to ensure clean data
-      const cleanData = JSON.parse(JSON.stringify(finalProfileData));
-      const sanitizedData = sanitizeProfileData(cleanData);
-      
+      const sanitizedData = sanitizeProfileData(profileData);
       await setDoc(doc(db, "userProfiles", user.userId), {
         profileData: sanitizedData,
         email,
         phone,
         updatedAt: new Date()
       });
-      
       // Update original data after successful save
       setOriginalProfileData(JSON.parse(JSON.stringify(sanitizedData)));
       alert("Profile saved successfully!");
     } catch (error) {
       console.error("Error saving profile:", error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      alert(`Failed to save profile: ${errorMessage}`);
+      alert("Failed to save profile. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -268,7 +238,6 @@ export default function BeFoundPage() {
             setProfileData={setProfileData}
             onSaveProfile={saveProfile}
             isSaving={isSaving}
-            onImageSelected={setSelectedImageFile}
           />
         )}
       </div>
