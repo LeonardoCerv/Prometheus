@@ -25,7 +25,7 @@ export default function Landing() {
             {/* Employers/Recruiters Column */}
             <div className="flex flex-col gap-4 md:max-w-sm">
               <a href="/find/sign-up">
-                <button className="bg-transparent text-foreground relative inline-flex items-center border-2 border-primary justify-center text-primary  text-3xl tracking-base ring-offset-background transition-colors focus-visible:outline-none disabled:opacity-50 shadow-md hover:brightness-95 px-4 py-2 font-fjalla">
+                <button className="bg-transparent text-foreground relative inline-flex items-center border-2 border-primary justify-center text-primary  text-3xl tracking-base ring-offset-background transition-colors focus-visible:outline-none disabled:opacity-50 shadow-md hover:brightness-95 px-4 py-2 font-fjalla w-full">
                   Find
                 </button>
               </a>

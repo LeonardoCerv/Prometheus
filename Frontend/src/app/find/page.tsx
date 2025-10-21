@@ -4,38 +4,60 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/sidebar";
 import Dashboard from "@/components/dashboard";
+import { db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { getCurrentUser, isAuthenticated } from "@/lib/auth";
 
-interface StartupDetails {
+interface CompanyDetails {
   companyName: string;
   userName: string;
   userRole: string;
   companySize: string;
   industry: string;
-  fundingStage: string;
-  location: string;
-  website: string;
   description: string;
 }
 
 export default function FindPage() {
   const router = useRouter();
-  const [startupDetails, setStartupDetails] = useState<StartupDetails | null>(null);
+  const [companyDetails, setCompanyDetails] = useState<CompanyDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load startup details from localStorage
-    const storedDetails = localStorage.getItem("startupDetails");
-    const userType = localStorage.getItem("userType");
-
-    if (storedDetails && userType === "startup") {
-      setStartupDetails(JSON.parse(storedDetails));
-    } else {
-      // Redirect to sign-up if no startup details found
-      router.push("/find/sign-up");
+    // Check authentication first
+    if (!isAuthenticated()) {
+      router.push("/");
       return;
     }
 
-    setIsLoading(false);
+    const user = getCurrentUser();
+    if (!user) {
+      router.push("/");
+      return;
+    }
+
+    // Load company details from Firebase using user ID
+    const loadCompanyDetails = async () => {
+      try {
+        const docRef = doc(db, "companyProfiles", user.userId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data() as CompanyDetails;
+          setCompanyDetails(data);
+        } else {
+          // Redirect to sign-up if no company details found
+          router.push("/find/sign-up");
+          return;
+        }
+      } catch (error) {
+        console.error("Error loading company details:", error);
+        router.push("/find/sign-up");
+      }
+
+      setIsLoading(false);
+    };
+
+    loadCompanyDetails();
   }, [router]);
 
   if (isLoading) {

@@ -1,6 +1,17 @@
 import TeamCarousel from './TeamCarousel';
+import MessageInput from './MessageInput';
+import { useRouter } from 'next/navigation';
+import { db } from "@/lib/firebase";
+import { collection, addDoc, getDocs, query, where, doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { getCurrentUser } from "@/lib/auth";
 
-export default function Dashboard() {
+interface DashboardProps {
+  conversationId?: string;
+}
+
+export default function Dashboard({ conversationId }: DashboardProps) {
+  const router = useRouter();
+
   const teamMembers = [
     {
       name: 'Kike',
@@ -28,6 +39,217 @@ export default function Dashboard() {
       description: 'Team Member'
     }
   ];
+
+  const handleSendMessage = async (message: string) => {
+    try {
+      const user = getCurrentUser();
+      if (!user) {
+        router.push("/");
+        return;
+      }
+
+      if (conversationId) {
+        // Update existing conversation
+        const conversationRef = doc(db, "conversations", conversationId);
+        const newMessage = {
+          id: Date.now().toString(),
+          content: message,
+          sender: 'user' as const,
+          timestamp: new Date()
+        };
+
+        await updateDoc(conversationRef, {
+          messages: arrayUnion(newMessage)
+        });
+
+        // Also update localStorage
+        const existingConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+        const conversationIndex = existingConversations.findIndex((conv: any) => conv.id === conversationId);
+        if (conversationIndex !== -1) {
+          existingConversations[conversationIndex].messages.push(newMessage);
+          localStorage.setItem('conversations', JSON.stringify(existingConversations));
+        }
+
+        // Stay on the same page - no navigation needed
+        return;
+      }
+
+      const title = message.length > 50 ? message.substring(0, 50) + '...' : message;
+
+      // Check if a conversation with this title already exists for this user
+      const conversationsRef = collection(db, "conversations");
+      const q = query(conversationsRef, where("title", "==", title), where("userId", "==", user.userId));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        // Conversation already exists, navigate to it
+        const existingConversation = querySnapshot.docs[0];
+        router.push(`/chat/${existingConversation.id}`);
+        return;
+      }
+
+      // Create new conversation in Firestore
+      const docRef = await addDoc(collection(db, "conversations"), {
+        title: title,
+        timestamp: new Date(),
+        type: 'job_search' as const,
+        userId: user.userId,
+        messages: [{
+          id: Date.now().toString(),
+          content: message,
+          sender: 'user' as const,
+          timestamp: new Date()
+        }]
+      });
+
+      // Also save to localStorage for consistency
+      const newConversation = {
+        id: docRef.id,
+        title: title,
+        timestamp: new Date(),
+        type: 'job_search' as const,
+        messages: [{
+          id: Date.now().toString(),
+          content: message,
+          sender: 'user' as const,
+          timestamp: new Date()
+        }]
+      };
+
+      const existingConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+      const updatedConversations = [newConversation, ...existingConversations];
+      localStorage.setItem('conversations', JSON.stringify(updatedConversations));
+
+      // Navigate to the new chat
+      router.push(`/chat/${docRef.id}`);
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+      // Fallback: create in localStorage only
+      const title = message.length > 50 ? message.substring(0, 50) + '...' : message;
+      const newConversation = {
+        id: Date.now().toString(),
+        title: title,
+        timestamp: new Date(),
+        type: 'job_search' as const,
+        messages: [{
+          id: Date.now().toString(),
+          content: message,
+          sender: 'user' as const,
+          timestamp: new Date()
+        }]
+      };
+
+      const existingConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+      const updatedConversations = [newConversation, ...existingConversations];
+      localStorage.setItem('conversations', JSON.stringify(updatedConversations));
+
+      router.push(`/chat/${newConversation.id}`);
+    }
+  };
+
+  const handleButtonClick = async (buttonText: string) => {
+    try {
+      const user = getCurrentUser();
+      if (!user) {
+        router.push("/");
+        return;
+      }
+
+      if (conversationId) {
+        // Update existing conversation
+        const conversationRef = doc(db, "conversations", conversationId);
+        const newMessage = {
+          id: Date.now().toString(),
+          content: buttonText,
+          sender: 'user' as const,
+          timestamp: new Date()
+        };
+
+        await updateDoc(conversationRef, {
+          messages: arrayUnion(newMessage)
+        });
+
+        // Also update localStorage
+        const existingConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+        const conversationIndex = existingConversations.findIndex((conv: any) => conv.id === conversationId);
+        if (conversationIndex !== -1) {
+          existingConversations[conversationIndex].messages.push(newMessage);
+          localStorage.setItem('conversations', JSON.stringify(existingConversations));
+        }
+
+        // Stay on the same page - no navigation needed
+        return;
+      }
+
+      // Check if a conversation with this title already exists for this user
+      const conversationsRef = collection(db, "conversations");
+      const q = query(conversationsRef, where("title", "==", buttonText), where("userId", "==", user.userId));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        // Conversation already exists, navigate to it
+        const existingConversation = querySnapshot.docs[0];
+        router.push(`/chat/${existingConversation.id}`);
+        return;
+      }
+
+      // Create new conversation in Firestore
+      const docRef = await addDoc(collection(db, "conversations"), {
+        title: buttonText,
+        timestamp: new Date(),
+        type: 'job_search' as const,
+        userId: user.userId,
+        messages: [{
+          id: Date.now().toString(),
+          content: buttonText,
+          sender: 'user' as const,
+          timestamp: new Date()
+        }]
+      });
+
+      // Also save to localStorage for consistency
+      const newConversation = {
+        id: docRef.id,
+        title: buttonText,
+        timestamp: new Date(),
+        type: 'job_search' as const,
+        messages: [{
+          id: Date.now().toString(),
+          content: buttonText,
+          sender: 'user' as const,
+          timestamp: new Date()
+        }]
+      };
+
+      const existingConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+      const updatedConversations = [newConversation, ...existingConversations];
+      localStorage.setItem('conversations', JSON.stringify(updatedConversations));
+
+      // Navigate to the new chat
+      router.push(`/chat/${docRef.id}`);
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+      // Fallback: create in localStorage only
+      const newConversation = {
+        id: Date.now().toString(),
+        title: buttonText,
+        timestamp: new Date(),
+        type: 'job_search' as const,
+        messages: [{
+          id: Date.now().toString(),
+          content: buttonText,
+          sender: 'user' as const,
+          timestamp: new Date()
+        }]
+      };
+
+      const existingConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+      const updatedConversations = [newConversation, ...existingConversations];
+      localStorage.setItem('conversations', JSON.stringify(updatedConversations));
+
+      router.push(`/chat/${newConversation.id}`);
+    }
+  };
   return (
     <main className="flex w-full flex-1 flex-col md:pl-[272px] lg:pr-0">
       <div className="pt-8 h-[calc(100dvh-7px)] flex flex-col gap-16">
@@ -42,45 +264,45 @@ export default function Dashboard() {
             {/* Carousel for top-Buttons */}
             <div className="relative button-carousel-container" role="region" aria-roledescription="carousel">
               <div className="gap-4 top-button-carousel">
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">looking for a marketer</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me hardware people</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">need a producer for my album</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border border-muted px-4 py-1 text-foreground hover:text-primary border-muted">i need to hire a react engineer</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me content creators</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">experts on tiktok</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">who are some people i should invest in?</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">tell me the legend of naveed</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">i'm building in gaming</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-1 py-1 text-foreground hover:text-primary border-muted">show me fast growing projects</button>
+                  <button onClick={() => handleButtonClick("looking for a marketer")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">looking for a marketer</button>
+                  <button onClick={() => handleButtonClick("show me hardware people")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me hardware people</button>
+                  <button onClick={() => handleButtonClick("need a producer for my album")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">need a producer for my album</button>
+                  <button onClick={() => handleButtonClick("i need to hire a react engineer")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border border-muted px-4 py-1 text-foreground hover:text-primary border-muted">i need to hire a react engineer</button>
+                  <button onClick={() => handleButtonClick("show me content creators")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me content creators</button>
+                  <button onClick={() => handleButtonClick("experts on tiktok")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">experts on tiktok</button>
+                  <button onClick={() => handleButtonClick("who are some people i should invest in?")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">who are some people i should invest in?</button>
+                  <button onClick={() => handleButtonClick("tell me the legend of naveed")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">tell me the legend of naveed</button>
+                  <button onClick={() => handleButtonClick("i'm building in gaming")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">i'm building in gaming</button>
+                  <button onClick={() => handleButtonClick("show me fast growing projects")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-1 py-1 text-foreground hover:text-primary border-muted">show me fast growing projects</button>
                   {/* Duplicate buttons for infinite loop */}
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">looking for a marketer</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me hardware people</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">need a producer for my album</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border border-muted px-4 py-1 text-foreground hover:text-primary border-muted">i need to hire a react engineer</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me content creators</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">experts on tiktok</button>
+                  <button onClick={() => handleButtonClick("looking for a marketer")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">looking for a marketer</button>
+                  <button onClick={() => handleButtonClick("show me hardware people")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me hardware people</button>
+                  <button onClick={() => handleButtonClick("need a producer for my album")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">need a producer for my album</button>
+                  <button onClick={() => handleButtonClick("i need to hire a react engineer")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border border-muted px-4 py-1 text-foreground hover:text-primary border-muted">i need to hire a react engineer</button>
+                  <button onClick={() => handleButtonClick("show me content creators")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me content creators</button>
+                  <button onClick={() => handleButtonClick("experts on tiktok")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">experts on tiktok</button>
               </div>
             </div>
             {/* Carousel for bottom-Buttons */}
               <div className="relative button-carousel-container" role="region" aria-roledescription="carousel">
               <div className="gap-4 bottom-button-carousel">
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">looking for a marketer</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me hardware people</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">need a producer for my album</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border border-muted px-4 py-1 text-foreground hover:text-primary border-muted">i need to hire a react engineer</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me content creators</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">experts on tiktok</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">who are some people i should invest in?</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">tell me the legend of naveed</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">i'm building in gaming</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-1 py-1 text-foreground hover:text-primary border-muted">show me fast growing projects</button>
+                  <button onClick={() => handleButtonClick("looking for a marketer")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">looking for a marketer</button>
+                  <button onClick={() => handleButtonClick("show me hardware people")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me hardware people</button>
+                  <button onClick={() => handleButtonClick("need a producer for my album")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">need a producer for my album</button>
+                  <button onClick={() => handleButtonClick("i need to hire a react engineer")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border border-muted px-4 py-1 text-foreground hover:text-primary border-muted">i need to hire a react engineer</button>
+                  <button onClick={() => handleButtonClick("show me content creators")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me content creators</button>
+                  <button onClick={() => handleButtonClick("experts on tiktok")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">experts on tiktok</button>
+                  <button onClick={() => handleButtonClick("who are some people i should invest in?")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">who are some people i should invest in?</button>
+                  <button onClick={() => handleButtonClick("tell me the legend of naveed")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">tell me the legend of naveed</button>
+                  <button onClick={() => handleButtonClick("i'm building in gaming")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">i'm building in gaming</button>
+                  <button onClick={() => handleButtonClick("show me fast growing projects")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-1 py-1 text-foreground hover:text-primary border-muted">show me fast growing projects</button>
                   {/* Duplicate buttons for infinite loop */}
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">looking for a marketer</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me hardware people</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">need a producer for my album</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border border-muted px-4 py-1 text-foreground hover:text-primary border-muted">i need to hire a react engineer</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me content creators</button>
-                  <button className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">experts on tiktok</button>
+                  <button onClick={() => handleButtonClick("looking for a marketer")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">looking for a marketer</button>
+                  <button onClick={() => handleButtonClick("show me hardware people")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me hardware people</button>
+                  <button onClick={() => handleButtonClick("need a producer for my album")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">need a producer for my album</button>
+                  <button onClick={() => handleButtonClick("i need to hire a react engineer")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border border-muted px-4 py-1 text-foreground hover:text-primary border-muted">i need to hire a react engineer</button>
+                  <button onClick={() => handleButtonClick("show me content creators")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">show me content creators</button>
+                  <button onClick={() => handleButtonClick("experts on tiktok")} className="button-item hover:text-white h-10 flex-shrink-0 cursor-pointer border px-4 py-1 text-foreground hover:text-primary border-muted">experts on tiktok</button>
               </div>
             </div>
           </div>
@@ -90,21 +312,7 @@ export default function Dashboard() {
       {/* Footer */}
       <div className="sticky mt-auto md:max-w-xl bottom-0 mx-auto w-full bg-background/70 backdrop-blur-md">
         <div className="flex flex-col gap-4 border-t py-4 md:border-none px-4 md:px-0 md:py-6">
-          <form>
-                <div className="relative flex w-full grow flex-col justify-center overflow-hidden border border-muted bg-background">
-                <textarea
-                tabIndex={0}
-                rows={1}
-                placeholder="message prometheus..."
-                spellCheck="false"
-                className="w-full resize-none overflow-hidden bg-transparent py-3 pl-4 pr-10 outline-none placeholder:text-muted focus-within:outline-none text-foreground"
-
-              />
-              <div className="absolute right-2 z-10 flex items-center gap-1 sm:right-2">
-              <button  className="relative inline-flex items-center justify-center rounded-md text-base font-semibold tracking-base ring-offset-background transition-colors focus-visible:outline-none disabled:opacity-50 shadow-none hover:bg-primary/90 size-8 p-0 hover:text-primary/50 text-foreground cursor-pointer" type="submit" data-state="closed"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="size-4"><path d="M8.14645 3.14645C8.34171 2.95118 8.65829 2.95118 8.85355 3.14645L12.8536 7.14645C13.0488 7.34171 13.0488 7.65829 12.8536 7.85355L8.85355 11.8536C8.65829 12.0488 8.34171 12.0488 8.14645 11.8536C7.95118 11.6583 7.95118 11.3417 8.14645 11.1464L11.2929 8H2.5C2.22386 8 2 7.77614 2 7.5C2 7.22386 2.22386 7 2.5 7H11.2929L8.14645 3.85355C7.95118 3.65829 7.95118 3.34171 8.14645 3.14645Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path></svg><span className="sr-only">what are you working on</span></button>
-              </div>
-            </div>
-          </form>
+          <MessageInput onSendMessage={handleSendMessage} />
         </div>
       </div>
     </main>

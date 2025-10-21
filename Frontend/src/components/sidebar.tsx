@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from "firebase/firestore";
+import { getCurrentUser, isAuthenticated } from "@/lib/auth";
 
 interface Conversation {
   id: string;
@@ -19,42 +22,66 @@ export default function Sidebar() {
   const [menuCoords, setMenuCoords] = useState<{ top: number; left: number } | null>(null);
   const menuButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
-  // Load conversations from localStorage on mount
+  // Load conversations from Firestore on mount
   useEffect(() => {
-    const storedConversations = localStorage.getItem("conversations");
-    if (storedConversations) {
-      const parsed = JSON.parse(storedConversations);
-      // Convert timestamp strings back to Date objects
-      const conversationsWithDates = parsed.map((conv: any) => ({
-        ...conv,
-        timestamp: new Date(conv.timestamp)
-      }));
-      setConversations(conversationsWithDates);
-    } else {
-      // Add some sample conversations for demo
-      const sampleConversations: Conversation[] = [
-        {
-          id: "1",
-          title: "React Developer Position",
-          timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-          type: "job_posting"
-        },
-        {
-          id: "2",
-          title: "Looking for UI/UX Designers",
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-          type: "job_search"
-        },
-        {
-          id: "3",
-          title: "Backend Engineer - Node.js",
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-          type: "job_posting"
+    const loadConversations = async () => {
+      try {
+        if (!isAuthenticated()) {
+          setConversations([]);
+          return;
         }
-      ];
-      setConversations(sampleConversations);
-      localStorage.setItem("conversations", JSON.stringify(sampleConversations));
-    }
+
+        const user = getCurrentUser();
+        if (!user) {
+          setConversations([]);
+          return;
+        }
+
+        const conversationsRef = collection(db, "conversations");
+        const q = query(conversationsRef, where("userId", "==", user.userId));
+        const querySnapshot = await getDocs(q);
+        const loadedConversations: Conversation[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          // Only include conversations that have messages
+          if (data.messages && data.messages.length > 0) {
+            loadedConversations.push({
+              id: doc.id,
+              title: data.title,
+              timestamp: data.timestamp.toDate(),
+              type: data.type
+            });
+          }
+        });
+        setConversations(loadedConversations);
+      } catch (error) {
+        console.error("Error loading conversations:", error);
+        // Fallback to sample data if Firestore fails
+        const sampleConversations: Conversation[] = [
+          {
+            id: "1",
+            title: "React Developer Position",
+            timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
+            type: "job_posting"
+          },
+          {
+            id: "2",
+            title: "Looking for UI/UX Designers",
+            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
+            type: "job_search"
+          },
+          {
+            id: "3",
+            title: "Backend Engineer - Node.js",
+            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
+            type: "job_posting"
+          }
+        ];
+        setConversations(sampleConversations);
+      }
+    };
+
+    loadConversations();
   }, []);
 
   // Close menu when clicking outside
@@ -69,33 +96,25 @@ export default function Sidebar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [openMenuId]);
 
-  const createNewConversation = () => {
-    const newConversation: Conversation = {
-      id: Date.now().toString(),
-      title: "New Job Search",
-      timestamp: new Date(),
-      type: "job_search"
-    };
-
-    const updatedConversations = [newConversation, ...conversations];
-    setConversations(updatedConversations);
-    localStorage.setItem("conversations", JSON.stringify(updatedConversations));
-
-    // Navigate to find page or trigger new search
+  const createNewConversation = async () => {
+    // Navigate directly to the find/dashboard page instead of creating empty conversation
     router.push("/find");
   };
 
   const selectConversation = (conversation: Conversation) => {
-    // For now, just navigate to find page
-    // In a real app, this would load the specific conversation
-    router.push("/find");
+    // Navigate to the specific chat
+    router.push(`/chat/${conversation.id}`);
   };
 
-  const deleteConversation = (conversationId: string) => {
-    const updatedConversations = conversations.filter(conv => conv.id !== conversationId);
-    setConversations(updatedConversations);
-    localStorage.setItem("conversations", JSON.stringify(updatedConversations));
-    setOpenMenuId(null);
+  const deleteConversation = async (conversationId: string) => {
+    try {
+      await deleteDoc(doc(db, "conversations", conversationId));
+      const updatedConversations = conversations.filter(conv => conv.id !== conversationId);
+      setConversations(updatedConversations);
+      setOpenMenuId(null);
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
+    }
   };
 
   const startEditing = (conversation: Conversation) => {
@@ -104,13 +123,19 @@ export default function Sidebar() {
     setOpenMenuId(null);
   };
 
-  const saveEdit = (conversationId: string) => {
+  const saveEdit = async (conversationId: string) => {
     if (editingTitle.trim()) {
-      const updatedConversations = conversations.map(conv =>
-        conv.id === conversationId ? { ...conv, title: editingTitle.trim() } : conv
-      );
-      setConversations(updatedConversations);
-      localStorage.setItem("conversations", JSON.stringify(updatedConversations));
+      try {
+        await updateDoc(doc(db, "conversations", conversationId), {
+          title: editingTitle.trim()
+        });
+        const updatedConversations = conversations.map(conv =>
+          conv.id === conversationId ? { ...conv, title: editingTitle.trim() } : conv
+        );
+        setConversations(updatedConversations);
+      } catch (error) {
+        console.error("Error updating conversation:", error);
+      }
     }
     setEditingId(null);
     setEditingTitle("");
@@ -148,16 +173,17 @@ export default function Sidebar() {
         <a className="pl-2" href="/">
           <div className="flex w-full items-center">
             <img src="/prometheus.svg" alt="Logo" width="64" height="64" />
+            <span className="ml-1 text-primary text-3xl font-averia">Prometheus</span>
           </div>
         </a>
 
         {/* New Chat Button */}
-        <div className="px-2 pt-4">
+        <div className="px-2 pt-4 mr-6 ">
           <button
             onClick={createNewConversation}
             className="w-full bg-primary text-foreground relative inline-flex items-center justify-center text-sm font-semibold tracking-base ring-offset-background transition-colors focus-visible:outline-none disabled:opacity-50 shadow-sm hover:brightness-95 h-[36px] px-3 py-2 rounded-md"
           >
-            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4 mr-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
             New Search

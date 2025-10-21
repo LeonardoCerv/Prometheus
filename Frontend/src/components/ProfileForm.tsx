@@ -6,17 +6,19 @@ interface ProfileFormProps {
   profileData: ProfileData;
   setProfileData: (data: ProfileData) => void;
   onSaveProfile?: () => void;
+  isSaving?: boolean;
 }
 
 export default function ProfileForm({
   profileData,
   setProfileData,
   onSaveProfile,
+  isSaving = false,
 }: ProfileFormProps) {
   const handlePersonalInfoChange = (field: string, value: string) => {
     setProfileData({
       ...profileData,
-      personal_info: { ...profileData.personal_info, [field]: value },
+      personal_info: { ...profileData.personal_info, [field]: value || "" },
     });
   };
 
@@ -130,7 +132,9 @@ export default function ProfileForm({
                     if (file) {
                       const reader = new FileReader();
                       reader.onloadend = () => {
-                        handlePersonalInfoChange("image", reader.result as string);
+                        if (reader.result) {
+                          handlePersonalInfoChange("image", reader.result as string);
+                        }
                       };
                       reader.readAsDataURL(file);
                     }
@@ -496,16 +500,7 @@ export default function ProfileForm({
         </div>
 
         {/* Save Button */}
-        <div className="flex justify-end pt-4">
-          <button
-            type="button"
-            onClick={onSaveProfile}
-            disabled={!onSaveProfile}
-            className="bg-primary hover:bg-primary/90 text-foreground px-8 py-3 font-semibold text-lg transition-all shadow-sm hover:shadow-md rounded disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Save Profile
-          </button>
-        </div>
+        {/* Moved to be-found page header */}
       </form>
     </div>
   );

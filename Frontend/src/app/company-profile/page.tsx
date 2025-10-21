@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { db } from "@/lib/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 interface CompanyDetails {
   companyName: string;
@@ -26,19 +28,27 @@ export default function CompanyProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load existing company details from localStorage
-    const storedDetails = localStorage.getItem("startupDetails");
-    const userType = localStorage.getItem("userType");
+    const loadCompanyDetails = async () => {
+      try {
+        const docRef = doc(db, "companyProfiles", "default");
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data() as CompanyDetails;
+          setDetails(data);
+        } else {
+          // If no company details exist, redirect to sign-up
+          router.push("/find/sign-up");
+          return;
+        }
+      } catch (error) {
+        console.error("Error loading company details:", error);
+        router.push("/find/sign-up");
+      }
+      setIsLoading(false);
+    };
 
-    if (storedDetails && userType === "startup") {
-      setDetails(JSON.parse(storedDetails));
-    } else {
-      // If no company details exist, redirect to sign-up
-      router.push("/find/sign-up");
-      return;
-    }
-
-    setIsLoading(false);
+    loadCompanyDetails();
   }, [router]);
 
   const handleInputChange = (field: keyof CompanyDetails, value: string) => {
@@ -50,8 +60,11 @@ export default function CompanyProfilePage() {
     setIsSubmitting(true);
 
     try {
-      // Update company details in localStorage
-      localStorage.setItem("startupDetails", JSON.stringify(details));
+      // Update company details in Firestore
+      await setDoc(doc(db, "companyProfiles", "default"), {
+        ...details,
+        updatedAt: new Date()
+      });
 
       // Navigate back to find page
       router.push("/find");
@@ -235,7 +248,7 @@ export default function CompanyProfilePage() {
                     onChange={(e) => handleInputChange("description", e.target.value)}
                     rows={4}
                     className="w-full bg-background border border-muted px-4 py-3 text-foreground outline-none focus:border-primary transition-colors resize-none rounded"
-                    placeholder="Tell us about your mission, what you do, and what makes your startup unique..."
+                    placeholder="Tell us about your mission, what you do, and what makes your company unique..."
                   />
                 </div>
               </div>
