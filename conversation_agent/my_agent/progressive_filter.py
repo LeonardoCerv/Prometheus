@@ -25,15 +25,37 @@ class ProgressiveFilter:
     
 
     
-    def _calculate_skill_match(self, candidate_skills: List[str], required_skills: List[str]) -> Dict[str, Any]:
-        """Calculate detailed skill match with scoring"""
+    def _calculate_skill_match(self, candidate_skills: List[str], required_skills: List[str], candidate_projects: List[Dict], candidate_bio: str) -> Dict[str, Any]:
+        """Calculate detailed skill match with scoring, checking skills, projects, and bio"""
         candidate_skills_lower = [s.lower() for s in candidate_skills]
         required_skills_lower = [s.lower() for s in required_skills]
         
-        # Direct matches
-        direct_matches = [s for s in required_skills_lower if s in candidate_skills_lower]
+        # Collect skills from projects
+        project_skills = set()
+        for project in candidate_projects:
+            techs = project.get("technologies", [])
+            for tech in techs:
+                project_skills.add(tech.lower())
         
-        # Transferable skills mapping
+        # Bio text for checking
+        bio_lower = candidate_bio.lower() if candidate_bio else ""
+        
+        # Direct matches - check skills, projects, and bio
+        direct_matches = []
+        match_sources = {}  # Track where each skill was found
+        
+        for req in required_skills_lower:
+            if req in candidate_skills_lower:
+                direct_matches.append(req)
+                match_sources[req] = 'skills'
+            elif req in project_skills:
+                direct_matches.append(req)
+                match_sources[req] = 'projects'
+            elif req in bio_lower:
+                direct_matches.append(req)
+                match_sources[req] = 'bio'
+        
+        # Transferable skills mapping (only check against parsed skills for now)
         transferable_map = {
             'react': ['vue.js', 'angular', 'next.js'],
             'vue.js': ['react', 'angular'],
@@ -42,7 +64,14 @@ class ProgressiveFilter:
             'node.js': ['express', 'nestjs', 'fastapi'],
             'python': ['django', 'fastapi'],
             'javascript': ['typescript'],
-            'typescript': ['javascript']
+            'typescript': ['javascript'],
+            'swift': ['objective-c', 'ios'],
+            'ios': ['swift', 'objective-c'],
+            'objective-c': ['swift', 'ios'],
+            'kotlin': ['android'],
+            'android': ['kotlin'],
+            'react native': ['flutter', 'swift', 'kotlin'],
+            'flutter': ['react native', 'kotlin']
         }
         
         # Find transferable skills
@@ -54,7 +83,8 @@ class ProgressiveFilter:
                     if candidate_skill in transferable_map.get(required, []):
                         transferable_matches.append({
                             'required': required,
-                            'has': candidate_skill
+                            'has': candidate_skill,
+                            'source': 'skills'
                         })
                         transferable_score += 15
                         break
@@ -88,6 +118,7 @@ class ProgressiveFilter:
             'score': float(final_score),
             'direct_matches': direct_matches,
             'transferable_matches': transferable_matches,
+            'match_sources': match_sources,
             'missing_skills': [s for s in required_skills_lower if s not in direct_matches and 
                               not any(t['required'] == s for t in transferable_matches)]
         }
@@ -143,7 +174,15 @@ class ProgressiveFilter:
             'html': ['html'],
             'redux': ['redux'],
             'firebase': ['firebase'],
-            'testing': ['test', 'testing', 'jest', 'cypress', 'unit test']
+            'testing': ['test', 'testing', 'jest', 'cypress', 'unit test'],
+            'swift': ['swift'],
+            'ios': ['ios', 'iOS'],
+            'objective-c': ['objective-c', 'objective c'],
+            'xcode': ['xcode'],
+            'react native': ['react native'],
+            'flutter': ['flutter'],
+            'kotlin': ['kotlin'],
+            'android': ['android']
         }
         
         detected_skills = []
@@ -152,15 +191,38 @@ class ProgressiveFilter:
                 detected_skills.append(skill)
         
         # Infer role-based skills
-        if 'web developer' in query_lower or 'frontend' in query_lower:
-            if not detected_skills:
-                detected_skills = ['javascript', 'html', 'css']
-        elif 'backend' in query_lower:
-            if not detected_skills:
-                detected_skills = ['python', 'node.js']
-        elif 'full stack' in query_lower or 'fullstack' in query_lower:
-            if not detected_skills:
-                detected_skills = ['javascript', 'react', 'node.js']
+        role_skills = {
+            'data scientist': ['python', 'machine learning', 'sql', 'pandas', 'numpy', 'scikit-learn'],
+            'machine learning engineer': ['python', 'tensorflow', 'pytorch', 'machine learning', 'deep learning'],
+            'ml engineer': ['python', 'tensorflow', 'pytorch', 'machine learning'],
+            'devops engineer': ['docker', 'kubernetes', 'aws', 'linux', 'ci/cd', 'jenkins', 'terraform'],
+            'backend developer': ['python', 'node.js', 'java', 'postgresql', 'mongodb', 'api', 'rest'],
+            'frontend developer': ['javascript', 'react', 'html', 'css', 'typescript'],
+            'full stack developer': ['javascript', 'react', 'node.js', 'python', 'sql', 'html', 'css'],
+            'fullstack': ['javascript', 'react', 'node.js', 'python', 'sql'],
+            'mobile developer': ['swift', 'kotlin', 'react native', 'flutter', 'ios', 'android'],
+            'ios developer': ['swift', 'ios', 'objective-c', 'xcode'],
+            'android developer': ['kotlin', 'android', 'java'],
+            'web developer': ['javascript', 'html', 'css', 'react', 'node.js'],
+            'crm developer': ['salesforce', 'dynamics', 'hubspot', 'zoho', 'api integration'],
+            'crm specialist': ['salesforce', 'hubspot', 'zoho', 'customer service'],
+            'e-commerce developer': ['javascript', 'php', 'sql', 'shopify', 'woocommerce', 'payment integration'],
+            'blockchain developer': ['solidity', 'web3', 'ethereum', 'smart contracts'],
+            'game developer': ['unity', 'unreal engine', 'c++', 'c#'],
+            'qa engineer': ['testing', 'selenium', 'cypress', 'jest', 'automation'],
+            'security engineer': ['cybersecurity', 'penetration testing', 'encryption', 'owasp'],
+            'cloud engineer': ['aws', 'azure', 'gcp', 'docker', 'kubernetes'],
+            'data engineer': ['python', 'sql', 'spark', 'hadoop', 'etl'],
+            'product manager': ['product management', 'agile', 'scrum', 'analytics'],
+            'ui/ux designer': ['figma', 'sketch', 'adobe xd', 'user research', 'prototyping']
+        }
+        
+        # Check for role mentions and add corresponding skills if no specific skills detected
+        if not detected_skills:
+            for role, skills in role_skills.items():
+                if role in query_lower:
+                    detected_skills.extend(skills)
+                    break
         
         return {
             'skills': detected_skills,
@@ -169,7 +231,7 @@ class ProgressiveFilter:
             'raw_query': query
         }
     
-    def filter_candidates(self, query: str, min_score: float = 60.0) -> Dict[str, Any]:
+    def filter_candidates(self, query: str, min_score: float = 40.0) -> Dict[str, Any]:
         """
         Progressive filtering: applies new query on top of existing filters
         """
@@ -216,7 +278,7 @@ class ProgressiveFilter:
             
             # Calculate skill match
             if all_skills:
-                skill_analysis = self._calculate_skill_match(candidate["skills"], all_skills)
+                skill_analysis = self._calculate_skill_match(candidate["skills"], all_skills, candidate["projects"], candidate.get("bio", ""))
                 
                 # Only include if meets minimum score
                 if skill_analysis['score'] >= min_score:
@@ -233,6 +295,7 @@ class ProgressiveFilter:
                         "location": candidate["location"],
                         "matched_skills": skill_analysis['direct_matches'],
                         "transferable_skills": skill_analysis['transferable_matches'],
+                        "match_sources": skill_analysis.get('match_sources', {}),
                         "missing_skills": skill_analysis['missing_skills'],
                         "reasoning": self._generate_reasoning(candidate, skill_analysis, all_skills),
                         "hourly_rate": candidate.get("hourly_rate"),
@@ -292,15 +355,24 @@ class ProgressiveFilter:
         """Generate human-readable reasoning for match"""
         reasoning_parts = []
         
-        # Direct matches - use simple language
+        # Direct matches - use simple language and mention source
         if skill_analysis['direct_matches']:
-            matched = skill_analysis['direct_matches'][:3]
-            if len(matched) == 1:
-                reasoning_parts.append(f"Knows {matched[0]}")
-            elif len(matched) == 2:
-                reasoning_parts.append(f"Knows {matched[0]} and {matched[1]}")
+            matches_with_sources = []
+            for skill in skill_analysis['direct_matches'][:3]:
+                source = skill_analysis.get('match_sources', {}).get(skill, 'skills')
+                if source == 'projects':
+                    matches_with_sources.append(f"{skill} (in projects)")
+                elif source == 'bio':
+                    matches_with_sources.append(f"{skill} (mentioned in bio)")
+                else:
+                    matches_with_sources.append(skill)
+            
+            if len(matches_with_sources) == 1:
+                reasoning_parts.append(f"Knows {matches_with_sources[0]}")
+            elif len(matches_with_sources) == 2:
+                reasoning_parts.append(f"Knows {matches_with_sources[0]} and {matches_with_sources[1]}")
             else:
-                reasoning_parts.append(f"Knows {matched[0]}, {matched[1]}, and more")
+                reasoning_parts.append(f"Knows {matches_with_sources[0]}, {matches_with_sources[1]}, and more")
         
         # Transferable skills - keep it simple
         if skill_analysis['transferable_matches']:

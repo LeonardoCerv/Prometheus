@@ -196,14 +196,16 @@ def _load_candidates_from_firebase() -> List[Dict[str, Any]]:
         print("⚠️ No fallback data available. Please check Firebase connection.")
         return []
 
-def _map_experience_to_level(years: int) -> str:
-    """Map years of experience to experience level"""
-    if years >= 7:
+def _map_experience_to_level(years: float) -> str:
+    """Map years of experience to experience level with more granularity"""
+    if years >= 8:
         return "senior"
-    elif years >= 3:
+    elif years >= 4:
         return "mid"
-    else:
+    elif years >= 1:
         return "junior"
+    else:
+        return "entry"
 
 def _parse_skills_from_string(skills_str: str) -> List[str]:
     """Parse skills from a formatted string into a list of individual skills"""
@@ -243,71 +245,204 @@ def _parse_skills_from_string(skills_str: str) -> List[str]:
     
     return unique_skills
 
-def _calculate_years_of_experience(job_experience: List[Dict[str, Any]]) -> int:
-    """Calculate total years of experience from job experience array"""
+def _calculate_years_of_experience(job_experience: List[Dict[str, Any]]) -> float:
+    """Calculate total years of experience from job experience array with improved accuracy"""
     if not job_experience:
         return 0
     
     from datetime import datetime
-    from dateutil import parser
+    try:
+        from dateutil import parser
+        has_dateutil = True
+    except ImportError:
+        has_dateutil = False
     
     total_months = 0
+    current_year = datetime.now().year
     
     for job in job_experience:
-        start_date_str = job.get("start_date", "")
-        end_date_str = job.get("end_date", "")
+        # Try multiple field name variations
+        start_date_str = job.get("start_date") or job.get("startDate") or job.get("start_date_str", "")
+        end_date_str = job.get("end_date") or job.get("endDate") or job.get("end_date_str", "")
         
         if not start_date_str:
             continue
         
         try:
-            # Parse start date
-            start_date = parser.parse(start_date_str, fuzzy=True)
+            # Parse start date - handle various formats
+            start_date = None
+            if isinstance(start_date_str, str):
+                # Try different date formats
+                date_formats = [
+                    "%Y-%m-%d", "%Y-%m", "%m/%Y", "%Y/%m", "%B %Y", "%b %Y",
+                    "%Y", "%d/%m/%Y", "%m/%d/%Y"
+                ]
+                
+                for fmt in date_formats:
+                    try:
+                        if fmt == "%Y":
+                            start_date = datetime(int(start_date_str), 1, 1)
+                        elif fmt == "%B %Y" or fmt == "%b %Y":
+                            start_date = datetime.strptime(start_date_str, fmt)
+                        elif len(start_date_str.split('-')) == 2:  # YYYY-MM
+                            year, month = map(int, start_date_str.split('-'))
+                            start_date = datetime(year, month, 1)
+                        else:
+                            start_date = datetime.strptime(start_date_str, fmt)
+                        break
+                    except ValueError:
+                        continue
+                
+                # If still not parsed and dateutil available, try fuzzy parsing
+                if start_date is None and has_dateutil:
+                    start_date = parser.parse(start_date_str, fuzzy=True)
             
-            # Parse end date (or use current date if "Present")
-            if end_date_str.lower() in ["present", "current", ""]:
+            # Parse end date (or use current date if "Present" or similar)
+            end_date = None
+            if not end_date_str or end_date_str.lower() in ["present", "current", "", "now"]:
                 end_date = datetime.now()
             else:
-                end_date = parser.parse(end_date_str, fuzzy=True)
+                # Try same formats for end date
+                for fmt in date_formats:
+                    try:
+                        if fmt == "%Y":
+                            end_date = datetime(int(end_date_str), 12, 31)  # End of year
+                        elif fmt == "%B %Y" or fmt == "%b %Y":
+                            end_date = datetime.strptime(end_date_str, fmt)
+                            # Set to end of month
+                            if end_date.month == 12:
+                                end_date = end_date.replace(day=31)
+                            else:
+                                end_date = datetime(end_date.year, end_date.month + 1, 1) - datetime.timedelta(days=1)
+                        elif len(end_date_str.split('-')) == 2:  # YYYY-MM
+                            year, month = map(int, end_date_str.split('-'))
+                            # Set to end of month
+                            if month == 12:
+                                end_date = datetime(year, 12, 31)
+                            else:
+                                end_date = datetime(year, month + 1, 1) - datetime.timedelta(days=1)
+                        else:
+                            end_date = datetime.strptime(end_date_str, fmt)
+                        break
+                    except ValueError:
+                        continue
+                
+                # If still not parsed and dateutil available, try fuzzy parsing
+                if end_date is None and has_dateutil:
+                    end_date = parser.parse(end_date_str, fuzzy=True)
             
-            # Calculate months
-            months = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
-            total_months += max(0, months)
+            # Calculate months with better precision
+            if start_date and end_date:
+                years_diff = end_date.year - start_date.year
+                months_diff = end_date.month - start_date.month
+                
+                # Handle negative months (end before start in same year)
+                if months_diff < 0:
+                    years_diff -= 1
+                    months_diff += 12
+                
+                months = years_diff * 12 + months_diff
+                
+                # Add days precision for more accuracy
+                days_diff = end_date.day - start_date.day
+                if days_diff > 15:  # If more than half month
+                    months += 1
+                elif days_diff < -15:  # If less than half month in previous month
+                    months -= 1
+                
+                total_months += max(0, months)
             
         except Exception as e:
-            print(f"Warning: Could not parse dates for job: {job.get('role', 'Unknown')} - {e}")
-            # Estimate 1 year if we can't parse
-            total_months += 12
+            print(f"Warning: Could not parse dates for job: {job.get('role', 'Unknown')} - Start: '{start_date_str}', End: '{end_date_str}' - Error: {e}")
+            # Better fallback: estimate based on role and company
+            role = job.get('role', '').lower()
+            if 'senior' in role or 'lead' in role or 'principal' in role:
+                total_months += 48  # 4 years
+            elif 'mid' in role or 'intermediate' in role:
+                total_months += 24  # 2 years
+            else:
+                total_months += 12  # 1 year
     
-    return max(1, total_months // 12)  # Convert to years, minimum 1
+    # Convert to years with decimal precision
+    total_years = total_months / 12.0
+    
+    # Ensure reasonable bounds
+    if total_years < 0:
+        total_years = 0
+    elif total_years > 50:  # Cap at 50 years
+        total_years = 50
+    
+    return round(total_years, 1)  # Return with 1 decimal place
 
 def _build_bio_from_profile(personal_info: Dict[str, Any], job_experience: List[Dict[str, Any]], projects: List[Dict[str, Any]]) -> str:
-    """Build a comprehensive bio from profile data"""
+    """Build a comprehensive and extensive bio from profile data"""
     bio_parts = []
     
-    # Add most recent job description
+    # Get basic info
+    name = personal_info.get("name", "")
+    location = personal_info.get("location", "")
+    
+    # Add current position and company
     if job_experience and len(job_experience) > 0:
-        latest_job = job_experience[0]
-        role = latest_job.get("role", "")
-        company = latest_job.get("company", "")
-        description = latest_job.get("description", "")
+        current_job = job_experience[0]
+        role = current_job.get("role", "")
+        company = current_job.get("company", "")
+        start_date = current_job.get("startDate", "")
         
         if role and company:
-            bio_parts.append(f"Currently working as {role} at {company}.")
+            if start_date:
+                bio_parts.append(f"Currently working as {role} at {company} since {start_date}.")
+            else:
+                bio_parts.append(f"Currently working as {role} at {company}.")
         
+        # Add job description if available
+        description = current_job.get("description", "")
         if description:
-            # Take first 200 characters of description
-            short_desc = description[:200] + "..." if len(description) > 200 else description
+            # Take first 150 characters to keep it concise but informative
+            short_desc = description[:150] + "..." if len(description) > 150 else description
             bio_parts.append(short_desc)
+    
+    # Add experience summary
+    if job_experience and len(job_experience) > 1:
+        total_jobs = len(job_experience)
+        bio_parts.append(f"Has held {total_jobs} positions in their career, demonstrating versatility and continuous growth.")
+    
+    # Add education highlights
+    # Note: education data might not be available in this function scope, but we can add it if needed
     
     # Add notable projects
     if projects and len(projects) > 0:
         notable_project = projects[0]
         project_name = notable_project.get("name", "")
+        technologies = notable_project.get("technologies", [])
+        
         if project_name:
-            bio_parts.append(f"Notable project: {project_name}")
+            if technologies:
+                tech_str = ", ".join(technologies[:3])  # Show up to 3 technologies
+                bio_parts.append(f"Notable project: {project_name} (built with {tech_str})")
+            else:
+                bio_parts.append(f"Notable project: {project_name}")
+        
+        # Mention additional projects if they exist
+        if len(projects) > 1:
+            bio_parts.append(f"Has successfully delivered {len(projects)} projects throughout their career.")
     
-    return " ".join(bio_parts) if bio_parts else "Professional profile"
+    # Add location if available
+    if location:
+        bio_parts.append(f"Based in {location}.")
+    
+    # Add professional summary
+    if job_experience:
+        # Calculate rough experience level
+        years_exp = len(job_experience) * 1.5  # Rough estimate
+        if years_exp >= 8:
+            bio_parts.append("Highly experienced professional with extensive industry knowledge.")
+        elif years_exp >= 4:
+            bio_parts.append("Mid-level professional with solid experience and proven track record.")
+        else:
+            bio_parts.append("Emerging professional eager to contribute and grow.")
+    
+    return " ".join(bio_parts) if bio_parts else "Professional software developer with technical expertise."
 
 
 
