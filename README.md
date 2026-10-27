@@ -1,13 +1,13 @@
 # Prometheus
 
-[![Python](https://badges.0xleo.dev/badge?text=Python\&bgColor=3776AB\&textColor=FFFFFF\&iconColor=FFFFFF\&icon=simple-icons\:python)](https://www.python.org/)
-[![TypeScript](https://badges.0xleo.dev/badge?text=TypeScript\&bgColor=3178C6\&textColor=FFFFFF\&iconColor=FFFFFF\&icon=simple-icons\:typescript)](https://www.typescriptlang.org/)
-[![Next.js](https://badges.0xleo.dev/badge?text=Next.js\&bgColor=000000\&textColor=FFFFFF\&iconColor=FFFFFF\&icon=simple-icons\:nextdotjs)](https://nextjs.org/)
-[![Flask](https://badges.0xleo.dev/badge?text=Flask\&bgColor=000000\&textColor=FFFFFF\&iconColor=FFFFFF\&icon=simple-icons\:flask)](https://flask.palletsprojects.com/)
-[![Firebase](https://badges.0xleo.dev/badge?text=Firebase\&bgColor=FFCA28\&textColor=000000\&iconColor=000000\&icon=simple-icons\:firebase)](https://firebase.google.com/)
-[![Google AI](https://badges.0xleo.dev/badge?text=Google%20AI\&bgColor=4285F4\&textColor=FFFFFF\&iconColor=FFFFFF\&icon=simple-icons\:google)](https://ai.google/)
-[![React](https://badges.0xleo.dev/badge?text=React\&bgColor=61DAFB\&textColor=000000\&iconColor=000000\&icon=simple-icons\:react)](https://reactjs.org/)
-[![Tailwind CSS](https://badges.0xleo.dev/badge?text=Tailwind%20CSS\&bgColor=06B6D4\&textColor=FFFFFF\&iconColor=FFFFFF\&icon=simple-icons\:tailwindcss)](https://tailwindcss.com/)
+[![Python](https://ez-badges.vercel.app/badge?text=Python\&bgColor=3776AB\&textColor=FFFFFF\&iconColor=FFFFFF\&icon=simple-icons\:python)](https://www.python.org/)
+[![TypeScript](https://ez-badges.vercel.app/badge?text=TypeScript\&bgColor=3178C6\&textColor=FFFFFF\&iconColor=FFFFFF\&icon=simple-icons\:typescript)](https://www.typescriptlang.org/)
+[![Next.js](https://ez-badges.vercel.app/badge?text=Next.js\&bgColor=000000\&textColor=FFFFFF\&iconColor=FFFFFF\&icon=simple-icons\:nextdotjs)](https://nextjs.org/)
+[![Flask](https://ez-badges.vercel.app/badge?text=Flask\&bgColor=000000\&textColor=FFFFFF\&iconColor=FFFFFF\&icon=simple-icons\:flask)](https://flask.palletsprojects.com/)
+[![Firebase](https://ez-badges.vercel.app/badge?text=Firebase\&bgColor=FFCA28\&textColor=000000\&iconColor=000000\&icon=simple-icons\:firebase)](https://firebase.google.com/)
+[![Google AI](https://ez-badges.vercel.app/badge?text=Google%20AI\&bgColor=4285F4\&textColor=FFFFFF\&iconColor=FFFFFF\&icon=simple-icons\:google)](https://ai.google/)
+[![React](https://ez-badges.vercel.app/badge?text=React\&bgColor=61DAFB\&textColor=000000\&iconColor=000000\&icon=simple-icons\:react)](https://reactjs.org/)
+[![Tailwind CSS](https://ez-badges.vercel.app/badge?text=Tailwind%20CSS\&bgColor=06B6D4\&textColor=FFFFFF\&iconColor=FFFFFF\&icon=simple-icons\:tailwindcss)](https://tailwindcss.com/)
 
 A platform for finding people using natural language. Prometheus reimagines talent discovery through conversational AI, enabling employers to find ideal candidates and professionals to be discovered through intelligent, progressive search capabilities.
 
